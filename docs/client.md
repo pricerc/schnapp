@@ -7,6 +7,18 @@ Shared logic lives in **`Schnapp.Client.Core`**. UI capture is **`Schnapp.Client
 | Kind | Linux | Windows |
 |------|--------|---------|
 | **Config** (settings, token) | `~/.config/schnapp/` | `%AppData%\Schnapp\` |
+| **Data** (spool, DB) | `~/.local/share/schnapp/` | `%LocalAppData%\Schnapp\` |
+
+Respects `XDG_CONFIG_HOME` / `XDG_DATA_HOME` on Linux.
+
+| Path | Purpose |
+|------|---------|
+| `settings.json` | API URL, identity, machine, timezone, capture prefs, path overrides |
+| `token` | Opaque API bearer token |
+| `spool/{uuid7}/` | Per-item `meta.json`, `upload.json`, `image.bin` |
+| `schnapp.db` | SQLite: spool index, `ref_*` cache, offline `mutation` queue |
+
+Overrides: `settings.json` (`spoolDirectory`, …) or env such as `SCHNAPP_SPOOL_DIR` / `SCHNAPP_TOKEN`.
 
 ### Pre-configure Windows client (API / web URL)
 
@@ -23,25 +35,13 @@ The tray client only needs **`apiBaseUrl`** (Schnapp API). The browser UI is sep
 ```
 
 Writes/merges `%AppData%\Schnapp\settings.json`. Optional Start menu **Schnapp Web** shortcut uses `-WebUrl` (browser only).
-| **Data** (spool, DB) | `~/.local/share/schnapp/` | `%LocalAppData%\Schnapp\` |
-
-Respects `XDG_CONFIG_HOME` / `XDG_DATA_HOME` on Linux.
-
-| Path | Purpose |
-|------|---------|
-| `settings.json` | API URL, identity, machine, timezone, capture prefs, path overrides |
-| `token` | Opaque API bearer token |
-| `spool/{uuid7}/` | Per-item `meta.json`, `upload.json`, `image.bin` |
-| `schnapp.db` | SQLite: spool index, `ref_*` cache, offline `mutation` queue |
-
-Overrides: `settings.json` (`spoolDirectory`, …) or env such as `SCHNAPP_SPOOL_DIR` / `SCHNAPP_TOKEN`.
 
 ## Capture pipeline (tray)
 
 ```
 timer / Capture now
     → grab frames (X11 native preferred on Linux; GDI on Windows)
-    → encode (Linux ImageSharp: JPEG/PNG/WebP; Windows System.Drawing: JPEG/PNG)
+    → encode (Linux ImageSharp: JPEG/PNG/WebP; Windows System.Drawing JPEG/PNG, Imazen.WebP for WebP)
     → ScreenshotSpool.Enqueue  (always; sets metadata.Id = spool id)
     → TryBackgroundPush / uploads loop
          → UploadService.PushAsync (mutations first)

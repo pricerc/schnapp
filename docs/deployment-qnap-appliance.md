@@ -16,7 +16,7 @@ Build scripts live under [`scripts/appliance/`](../scripts/appliance/).
 | Attach disks (not OVA) | Simple; fine for rare rebuilds |
 | DHCP + reservation | No baked static IP |
 | Second disk for Postgres | Upgrade OS/app without dump if the data disk is kept |
-| Keep PostgreSQL | App is Npgsql/DbUp/Postgres-specific; dumps still supported |
+| PostgreSQL on this image | `schnapp-backup` and the data disk use PostgreSQL. The API also runs on Firebird 5; that path is [deployment-fedora.md](deployment-fedora.md), not this VM build |
 
 ## Build
 

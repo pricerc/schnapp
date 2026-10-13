@@ -9,7 +9,7 @@ ASP.NET Core REST API (`/api/v1/...`).
 - Configure Dapper Uuid7 handlers, DI for repositories, blob store, screenshot image processor
 - Optional **DbUp** migrate on startup (`Schnapp:MigrateOnStartup`)
 - Seed **admin** user if no users exist and admin credentials are configured
-- Map endpoint modules: auth, machines, screenshots, journals, lists, health
+- Map endpoint modules: auth, machines, screenshots, journals, lists, time-summary reports, health
 
 ### Auth
 
@@ -76,6 +76,8 @@ Login posts to API; token stored in **encrypted cookie**. Pages redirect to `/Lo
 | **Home** | Day timeline, filters (day, monitor column, time, journal text, tags), bulk row edit/delete, shot viewer dialog |
 | **Journals** | Grid + start dialog + full edit page (`/Journals/Edit/{id}`) |
 | **Customers / projects / tasks** | Hierarchy editors |
+| **Tags** | Org-wide tag dictionary (`/Tags`) |
+| **Reports** | Journal time by day, machine, and customer/project/task (`/Reports`); CSV export |
 | **Machines / profile / admin** | Machine edit, user profile timezone, admin users/machines/settings |
 
 ### Timezones
@@ -91,7 +93,7 @@ Profile timezone drives “today”, day bounds for lists (via API), and parsing
 ## Domain & data projects
 
 - **Domain:** pure entities and constants (no IO)
-- **Data:** Dapper SQL, migrations under `Migrations/*.sql`, `FileSystemImageBlobStore` (or configured `IImageBlobStore`)
+- **Data:** Dapper SQL for the provider selected at startup. PostgreSQL scripts stay at `Migrations/*.sql` (existing DbUp names). Firebird 5 scripts are `Migrations/Firebird/*.sql`. Blobs go through `FileSystemImageBlobStore` (or a configured `IImageBlobStore`). The API does not create the Firebird `.fdb`.
 
 ## Related
 

@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|--------|
 | **Date** | 2026-09-03 |
-| **Status** | Draft assessment |
-| **Scope** | Schnapp **server** metadata store (`Schnapp.Api` on the Fedora host). Image files stay on the filesystem. |
+| **Status** | Implemented (design record) |
+| **Scope** | Schnapp **server** metadata store (`Schnapp.Api`). Image files stay on the filesystem. |
 
-This document compares **PostgreSQL** and **Firebird SQL** as the catalog engine for Schnapp.Api, then plans **runtime support for either**, chosen in `appsettings.json`. It does not argue from prior engine-selection notes. It does **not** plan moving data from one engine to the other.
+Dual-engine support described here is in the API. Set `Schnapp:DatabaseProvider` to `PostgreSQL` (default) or `Firebird` and supply a matching `ConnectionStrings:Main`. Fedora install steps are in [deployment-fedora.md](deployment-fedora.md). The QNAP appliance image still ships PostgreSQL only.
 
-Production today: **one Schnapp server, on Fedora**, using PostgreSQL.
+This document compares **PostgreSQL** and **Firebird SQL** as the catalog engine, then records how **runtime support for either** is chosen in `appsettings.json`. It does not argue from prior engine-selection notes. It does **not** cover moving data from one engine to the other.
 
 ---
 

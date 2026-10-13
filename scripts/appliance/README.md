@@ -21,7 +21,7 @@ sudo ./scripts/appliance/recover-system-disk.sh /opt/schnapp/appliance/YYYYMMDD/
 # then re-copy the .img to the NAS / re-attach
 ```
 
-Blobs live on a **QNAP NFS share** (not on either disk). DHCP is used for networking; set a reservation on-site.
+Blobs default to `/opt/schnapp/data/blobs` on the data disk. Set `BLOB_NFS` to overmount a QNAP share on that path. DHCP is used for networking; set a reservation on-site.
 
 ## Locked choices
 
@@ -29,7 +29,7 @@ Blobs live on a **QNAP NFS share** (not on either disk). DHCP is used for networ
 - Import: **create VM + attach disks** (not OVA)
 - Network: **DHCP**
 - DB persistence: **second volume**
-- DB engine: **PostgreSQL** (unchanged)
+- DB engine: **PostgreSQL** on this image. The API also supports Firebird 5 on other hosts (`docs/deployment-fedora.md`)
 - **SMB**: Samba serves tray client kits at `\\<vm>\clients` (`/srv/schnapp-clients`)
 
 ## Client kits on the VM
@@ -58,7 +58,7 @@ instead of GitLab. Re-run the build; first successful fetch is cached.
 ## Quick build
 
 ```bash
-cd /path/to/schnapp   # qnap branch / worktree recommended
+cd /path/to/schnapp
 cp scripts/appliance/defaults.env.example scripts/appliance/defaults.env
 # edit defaults.env (passwords, optional BLOB_NFS, admin seed)
 

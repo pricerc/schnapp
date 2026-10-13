@@ -10,7 +10,7 @@
 | [deployment-qnap-appliance.md](deployment-qnap-appliance.md) | Alpine VM disks for QNAP Virtualization Station |
 | [goals.md](goals.md) | Product intent (screenshots + multi-user review) |
 | [mvp-tech-plan.md](mvp-tech-plan.md) | Locked MVP technology and scope |
-| [firebird-sql-assessment.md](firebird-sql-assessment.md) | PostgreSQL vs Firebird for the API catalog; either engine via `Schnapp:DatabaseProvider` |
+| [firebird-sql-assessment.md](firebird-sql-assessment.md) | Design record: PostgreSQL or Firebird 5 via `Schnapp:DatabaseProvider` (implemented) |
 
 **Archive/** holds historical session notes and older phase docs (CLI/tray drafts). Prefer the root docs above when behavior disagrees with the archive.
 
