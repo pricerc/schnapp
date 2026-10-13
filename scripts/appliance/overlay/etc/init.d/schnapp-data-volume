@@ -1,0 +1,36 @@
+#!/sbin/openrc-run
+# One-shot: format/mount second disk at /opt/schnapp/data.
+# Must NOT use command= + start-stop-daemon.
+
+description="Schnapp data volume (second disk → /opt/schnapp/data)"
+
+depend() {
+	need localmount
+	# Wait for device nodes (virtio often ready after udev)
+	after modules hwdrivers root udev-postmount
+	before postgresql postgresql16
+	keyword -docker -lxc -prefix
+}
+
+start() {
+	ebegin "Schnapp data volume"
+	# Also echo a line to messages via logger if available
+	if [ -x /usr/local/sbin/schnapp-data-volume ]; then
+		/usr/local/sbin/schnapp-data-volume
+		ret=$?
+	else
+		eerror "missing /usr/local/sbin/schnapp-data-volume"
+		ret=1
+	fi
+	if [ "$ret" -ne 0 ]; then
+		eerror "see /var/log/schnapp-data-volume.log"
+	fi
+	eend $ret "schnapp-data-volume failed (log: /var/log/schnapp-data-volume.log)"
+}
+
+stop() {
+	return 0
+}
+
+# OpenRC marks oneshots as "started" after successful start(); status stays started
+# while the mount remains. No process to supervise.

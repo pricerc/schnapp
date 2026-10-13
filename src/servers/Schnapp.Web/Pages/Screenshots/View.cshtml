@@ -1,0 +1,60 @@
+@page "{id}"
+@model Schnapp.Web.Pages.Screenshots.ViewModel
+@{
+    ViewData["Title"] = "Screenshot";
+    var back = string.IsNullOrWhiteSpace(Model.ReturnDate)
+        ? "/"
+        : $"/?date={Uri.EscapeDataString(Model.ReturnDate)}";
+    string? shotId26 = Model.Shot is null ? null : Schnapp.Contracts.Uuid7Text.Format(Model.Shot.Id);
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+@if (Model.Shot is not null)
+{
+    <div class="card">
+        <div class="page-head">
+            <h1>Screenshot</h1>
+            <a class="btn secondary small" href="@back">← Home</a>
+        </div>
+        <p class="muted">
+            @Model.Shot.TimestampUtc.ToString("u")
+            · @Model.Shot.MonitorName
+            · @Model.Shot.ContentType
+            · @Model.Shot.Width x @Model.Shot.Height
+        </p>
+        <img src="/Screenshots/Image/@Schnapp.Contracts.Uuid7Text.Format(Model.Shot.Id)"
+             alt="@(Model.Shot.MonitorName ?? "screenshot")" class="full-shot" />
+        <form method="post" data-disable-on-submit>
+            <input type="hidden" name="date" value="@Model.ReturnDate" />
+            <div class="entity-fields entity-fields-tags-notes">
+                <div class="entity-col entity-col-left">
+                    <div class="field-row">
+                        <label asp-for="Tags">Tags</label>
+                        <input asp-for="Tags" data-tags-autocomplete autocomplete="off" />
+                    </div>
+                </div>
+                <div class="entity-col entity-col-right">
+                    <div class="field-stack field-notes">
+                        <label asp-for="Notes">Notes</label>
+                        <textarea asp-for="Notes" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="entity-footer">
+                <div class="form-actions">
+                    <button type="submit" class="btn-with-icon">
+                        <partial name="_Icon" model='"save"' /><span>Save</span>
+                    </button>
+                    <button type="submit" class="btn-with-icon secondary" formaction="?handler=SaveAndClose">
+                        <partial name="_Icon" model='"save-close"' /><span>Save and close</span>
+                    </button>
+                    <a class="btn btn-with-icon secondary" href="@back">
+                        <partial name="_Icon" model='"close"' /><span>Close</span>
+                    </a>
+                </div>
+                <p class="entity-id">Id: <code>@shotId26</code></p>
+            </div>
+        </form>
+    </div>
+}

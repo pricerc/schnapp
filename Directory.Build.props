@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Avoid 1.0.0+longhex from Source Link / commit SHA. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <!-- Version: 1.0.<yy><day-of-year D3>.<HHmm> UTC, e.g. 1.0.26212.1430 -->
+  <PropertyGroup>
+    <_SchnappYear2>$([System.DateTime]::UtcNow.ToString("yy"))</_SchnappYear2>
+    <_SchnappDoy>$([System.DateTime]::UtcNow.DayOfYear.ToString("000"))</_SchnappDoy>
+    <_SchnappHHmm>$([System.DateTime]::UtcNow.ToString("HHmm"))</_SchnappHHmm>
+    <Version>1.0.$(_SchnappYear2)$(_SchnappDoy).$(_SchnappHHmm)</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.$(_SchnappYear2)$(_SchnappDoy).$(_SchnappHHmm)</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+  </PropertyGroup>
+
+  <!-- Default TFM for server projects; Client.Core / multi-target override in their csproj -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'Schnapp.Client.Core' and '$(MSBuildProjectName)' != 'Schnapp.Contracts'">
+    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(TargetFrameworks)' == ''">net10.0</TargetFramework>
+  </PropertyGroup>
+</Project>

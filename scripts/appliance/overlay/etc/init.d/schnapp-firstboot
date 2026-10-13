@@ -1,0 +1,31 @@
+#!/sbin/openrc-run
+# One-shot first-boot configuration (idempotent via flag file).
+
+description="Schnapp appliance first boot"
+
+depend() {
+	need localmount net
+	after schnapp-data-volume
+	after postgresql postgresql16
+	before schnapp-api schnapp-web
+}
+
+start() {
+	ebegin "Schnapp first boot"
+	if [ -x /usr/local/sbin/schnapp-firstboot ]; then
+		# Log stdout/stderr for diagnosis
+		/usr/local/sbin/schnapp-firstboot >>/var/log/schnapp-firstboot.log 2>&1
+		ret=$?
+	else
+		eerror "missing /usr/local/sbin/schnapp-firstboot"
+		ret=1
+	fi
+	if [ "$ret" -ne 0 ]; then
+		eerror "see /var/log/schnapp-firstboot.log"
+	fi
+	eend $ret "schnapp-firstboot failed (log: /var/log/schnapp-firstboot.log)"
+}
+
+stop() {
+	return 0
+}

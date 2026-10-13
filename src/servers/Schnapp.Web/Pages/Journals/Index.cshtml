@@ -1,0 +1,487 @@
+@page
+@model Schnapp.Web.Pages.Journals.IndexModel
+@using Schnapp.Contracts
+@{
+    ViewData["Title"] = "Journals";
+    ViewData["Wide"] = true;
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+<div class="card journals-page row-select-enabled" id="journals-page">
+    <div class="page-head">
+        <div>
+            <h1>Journals</h1>
+            <p class="muted" style="margin:0">
+                Times in <strong>@Model.ProfileTimeZoneId</strong>.
+                One open entry per machine.
+            </p>
+        </div>
+        <div class="page-head-actions">
+            @if (Model.Machines.Count == 0)
+            {
+                <span class="muted">No machines — register under Admin · Machines</span>
+            }
+            else
+            {
+                <button type="button" class="btn-with-icon" data-open-dialog="start-journal-dialog">
+                    <partial name="_Icon" model='"plus"' /><span>Start journal</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <form id="journals-get-form" method="get" class="report-controls journals-controls">
+        <fieldset class="report-panel">
+            <legend class="report-panel-title">Filters</legend>
+            <div class="report-filter-toolbar">
+                <div class="report-quick-ranges">
+                    <span class="muted">Quick range:</span>
+                    @foreach (var q in Model.QuickRanges)
+                    {
+                        var active = q.FromText == Model.FromDate && q.ToText == Model.ToDate;
+                        <a class="report-quick-link@(active ? " active" : null)"
+                           href="?@Model.FilterQuery(q.FromText, q.ToText)">@q.Label</a>
+                    }
+                </div>
+                <button type="submit" class="report-apply-btn">Apply</button>
+            </div>
+            <p class="muted report-cpt-hint" style="margin:0">
+                Column headers: non-empty <strong>In</strong> / <strong>Ex</strong> values are applied. Date filters use journal start date.
+            </p>
+        </fieldset>
+
+        <fieldset class="report-panel">
+            <legend class="report-panel-title">Group/Sort</legend>
+            <div class="day-filter-form report-filters">
+                <label>
+                    Group by
+                    <select name="GroupBy" aria-label="Group by">
+                        @foreach (var g in IndexModel.GroupByOptions)
+                        {
+                            if (g.Id == Model.GroupByNormalized)
+                            {
+                                <option value="@g.Id" selected>@g.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@g.Id">@g.Label</option>
+                            }
+                        }
+                    </select>
+                </label>
+                <label>
+                    Sort by
+                    <select name="SortBy" aria-label="Sort by">
+                        @foreach (var s in IndexModel.SortByOptions)
+                        {
+                            if (s.Id == Model.SortByNormalized)
+                            {
+                                <option value="@s.Id" selected>@s.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@s.Id">@s.Label</option>
+                            }
+                        }
+                    </select>
+                </label>
+                <label>
+                    Direction
+                    <select name="SortDir" aria-label="Sort direction">
+                        @if (Model.SortDirNormalized == "asc")
+                        {
+                            <option value="asc" selected>Ascending</option>
+                            <option value="desc">Descending</option>
+                        }
+                        else
+                        {
+                            <option value="asc">Ascending</option>
+                            <option value="desc" selected>Descending</option>
+                        }
+                    </select>
+                </label>
+            </div>
+        </fieldset>
+
+        <datalist id="journal-filter-customers">
+            @foreach (var c in Model.FilterCustomers) { <option value="@c.Label"></option> }
+        </datalist>
+        <datalist id="journal-filter-projects">
+            @foreach (var p in Model.FilterProjects) { <option value="@p.Label"></option> }
+        </datalist>
+        <datalist id="journal-filter-tasks">
+            @foreach (var t in Model.FilterTasks) { <option value="@t.Label"></option> }
+        </datalist>
+        <datalist id="journal-filter-machines">
+            @foreach (var m in Model.FilterMachines) { <option value="@m.Label"></option> }
+        </datalist>
+    </form>
+
+    <div id="journals-row-toolbar" class="toolbar journals-row-toolbar">
+        <button type="button" id="journals-bulk-edit-rows" class="btn-with-icon secondary"
+                title="Edit selected rows">
+            <partial name="_Icon" model='"edit"' /><span>Edit rows</span>
+        </button>
+        <button type="submit" id="journals-bulk-delete-rows" form="journals-bulk-form" class="btn-with-icon secondary"
+                formaction="?handler=BulkDelete"
+                disabled
+                data-confirm="Delete all selected journals? Linked screenshots will keep their images but lose the journal link. This cannot be undone.">
+            <partial name="_Icon" model='"trash"' /><span>Delete selected</span>
+        </button>
+        <span id="journals-row-selected-count" class="muted">0 row(s) selected</span>
+        <span class="muted">@Model.Rows.Count entr@(Model.Rows.Count == 1 ? "y" : "ies")</span>
+    </div>
+
+    <form id="journals-bulk-form" method="post" asp-page-handler="BulkDelete" data-disable-on-submit></form>
+
+    <div id="journals-scroll-top" class="table-scroll-top" aria-hidden="true">
+        <div id="journals-scroll-top-spacer"></div>
+    </div>
+    <div class="table-wrap journals-grid-wrap" id="journals-grid-wrap">
+        <table class="data-grid journals-grid reports-grid-filter-headers" id="journals-grid">
+            <thead>
+                <tr>
+                    <th class="col-lead" data-col="lead" title="Select and row actions">
+                        <input type="checkbox" id="journals-select-all-rows" aria-label="Select all rows" form="journals-bulk-form" />
+                    </th>
+                    <th class="report-col-filter" scope="col">
+                        <div class="report-th-title">Started</div>
+                        <div class="report-th-filters">
+                            <label class="report-th-line report-th-date" title="From date">
+                                <span class="report-th-tag">From</span>
+                                <input type="date" name="From" value="@Model.FromDate" required form="journals-get-form" aria-label="From date" />
+                            </label>
+                            <label class="report-th-line report-th-date" title="To date">
+                                <span class="report-th-tag">To</span>
+                                <input type="date" name="To" value="@Model.ToDate" required form="journals-get-form" aria-label="To date" />
+                            </label>
+                        </div>
+                    </th>
+                    <th>Finished</th>
+                    <th class="report-col-filter" scope="col">
+                        <div class="report-th-title">Machine</div>
+                        <div class="report-th-filters">
+                            <label class="report-th-line report-th-include">
+                                <span class="report-th-tag">In</span>
+                                <input type="text" name="IncMachine" value="@Model.IncMachine" list="journal-filter-machines"
+                                       form="journals-get-form" placeholder="All…" autocomplete="off" aria-label="Include machine" />
+                            </label>
+                            <label class="report-th-line report-th-exclude">
+                                <span class="report-th-tag">Ex</span>
+                                <input type="text" name="ExcMachine" value="@Model.ExcMachine" list="journal-filter-machines"
+                                       form="journals-get-form" placeholder="Exclude…" autocomplete="off" aria-label="Exclude machine" />
+                            </label>
+                        </div>
+                    </th>
+                    <th class="report-col-filter" scope="col">
+                        <div class="report-th-title">Customer</div>
+                        <div class="report-th-filters">
+                            <label class="report-th-line report-th-include">
+                                <span class="report-th-tag">In</span>
+                                <input type="text" name="IncCustomer" value="@Model.IncCustomer" list="journal-filter-customers"
+                                       form="journals-get-form" placeholder="All…" autocomplete="off" aria-label="Include customer" />
+                            </label>
+                            <label class="report-th-line report-th-exclude">
+                                <span class="report-th-tag">Ex</span>
+                                <input type="text" name="ExcCustomer" value="@Model.ExcCustomer" list="journal-filter-customers"
+                                       form="journals-get-form" placeholder="(none)" autocomplete="off" aria-label="Exclude customer" />
+                            </label>
+                        </div>
+                    </th>
+                    <th class="report-col-filter" scope="col">
+                        <div class="report-th-title">Project</div>
+                        <div class="report-th-filters">
+                            <label class="report-th-line report-th-include">
+                                <span class="report-th-tag">In</span>
+                                <input type="text" name="IncProject" value="@Model.IncProject" list="journal-filter-projects"
+                                       form="journals-get-form" placeholder="All…" autocomplete="off" aria-label="Include project" />
+                            </label>
+                            <label class="report-th-line report-th-exclude">
+                                <span class="report-th-tag">Ex</span>
+                                <input type="text" name="ExcProject" value="@Model.ExcProject" list="journal-filter-projects"
+                                       form="journals-get-form" placeholder="Exclude…" autocomplete="off" aria-label="Exclude project" />
+                            </label>
+                        </div>
+                    </th>
+                    <th class="report-col-filter" scope="col">
+                        <div class="report-th-title">Task</div>
+                        <div class="report-th-filters">
+                            <label class="report-th-line report-th-include">
+                                <span class="report-th-tag">In</span>
+                                <input type="text" name="IncTask" value="@Model.IncTask" list="journal-filter-tasks"
+                                       form="journals-get-form" placeholder="All…" autocomplete="off" aria-label="Include task" />
+                            </label>
+                            <label class="report-th-line report-th-exclude">
+                                <span class="report-th-tag">Ex</span>
+                                <input type="text" name="ExcTask" value="@Model.ExcTask" list="journal-filter-tasks"
+                                       form="journals-get-form" placeholder="Exclude…" autocomplete="off" aria-label="Exclude task" />
+                            </label>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr>
+                    <td colspan="7" class="empty-state" style="padding:1.25rem">
+                        <strong>No journal entries</strong><br />
+                        <span class="muted">Adjust filters, or start a journal.</span>
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var grp in Model.Sections)
+                {
+                    if (grp.ShowHeader)
+                    {
+                        <tr class="report-group-header">
+                            <td colspan="7">
+                                <strong>@grp.HeaderLabel</strong>
+                                <span class="muted"> · @grp.Rows.Count row(s)</span>
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var row in grp.Rows)
+                    {
+                        var id = row.Id;
+                        var formId = "journal-save-" + id;
+                        <tr class="@(row.IsOpen ? "journal-row-open" : null) journal-data-row@(string.IsNullOrEmpty(row.CustomerColour) ? null : " has-customer-colour")"
+                            data-journal-row data-journal-id="@id"
+                            style="@(string.IsNullOrEmpty(row.CustomerColour) ? null : $"--row-customer-colour:{row.CustomerColour}")">
+                            <td class="col-lead">
+                                <div class="row-lead">
+                                    <input type="checkbox" class="row-select" name="SelectedIds" value="@id"
+                                           form="journals-bulk-form" aria-label="Select journal @id" />
+                                    <form id="@formId" method="post" asp-page-handler="SaveRow" data-disable-on-submit></form>
+                                    <input form="@formId" type="hidden" name="RowId" value="@id" />
+                                    <button form="@formId" type="submit" class="icon-btn primary" title="Save row" aria-label="Save journal">
+                                        <partial name="_Icon" model='"save"' />
+                                    </button>
+                                    <a class="icon-btn" href="/Journals/Edit/@id" title="Full editor" aria-label="Edit journal">
+                                        <partial name="_Icon" model='"edit"' />
+                                    </a>
+                                    @if (row.IsOpen)
+                                    {
+                                        <form method="post" asp-page-handler="Stop" asp-route-id="@id" class="inline-form" data-disable-on-submit>
+                                            <button type="submit" class="icon-btn" title="Stop journal" aria-label="Stop journal">
+                                                <partial name="_Icon" model='"stop"' />
+                                            </button>
+                                        </form>
+                                    }
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@id" class="inline-form" data-disable-on-submit
+                                          data-confirm="Delete this journal? Screenshots will keep their images but lose the journal link.">
+                                        <button type="submit" class="icon-btn danger" title="Delete journal" aria-label="Delete journal">
+                                            <partial name="_Icon" model='"trash"' />
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                            <td>
+                                <input form="@formId" class="cell-input" type="datetime-local" step="1"
+                                       name="StartLocal" value="@row.StartLocal" aria-label="Started" required />
+                                @if (row.IsOpen)
+                                {
+                                    <span class="mixed-hint" title="Still open">open</span>
+                                }
+                            </td>
+                            <td>
+                                <input form="@formId" class="cell-input" type="datetime-local" step="1"
+                                       name="StopLocal" value="@row.StopLocal" aria-label="Finished"
+                                       title="Leave empty while open" />
+                            </td>
+                            <td class="muted" title="@row.MachineLabel">@row.MachineLabel</td>
+                            <td>
+                                <select form="@formId" class="cell-input journal-row-customer" name="CustomerId"
+                                        aria-label="Customer" data-journal-cascade="customer">
+                                    @foreach (var c in Model.Customers)
+                                    {
+                                        if (c.Id == row.CustomerId)
+                                        {
+                                            <option value="@c.Id" selected data-none="@(c.IsNone ? "1" : null)">@c.Label</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@c.Id" data-none="@(c.IsNone ? "1" : null)">@c.Label</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select form="@formId" class="cell-input journal-row-project" name="ProjectId"
+                                        aria-label="Project" data-journal-cascade="project">
+                                    @foreach (var p in Model.Projects)
+                                    {
+                                        if (p.Id == row.ProjectId)
+                                        {
+                                            <option value="@p.Id" selected data-parent="@p.ParentId" data-none="@(p.IsNone ? "1" : null)">@p.Label</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@p.Id" data-parent="@p.ParentId" data-none="@(p.IsNone ? "1" : null)">@p.Label</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select form="@formId" class="cell-input journal-row-task" name="TaskId"
+                                        aria-label="Task" data-journal-cascade="task">
+                                    @foreach (var t in Model.Tasks)
+                                    {
+                                        if (t.Id == row.TaskId)
+                                        {
+                                            <option value="@t.Id" selected data-parent="@t.ParentId" data-none="@(t.IsNone ? "1" : null)">@t.Label</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@t.Id" data-parent="@t.ParentId" data-none="@(t.IsNone ? "1" : null)">@t.Label</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                    if (grp.ShowSubtotal)
+                    {
+                        <tr class="report-group-subtotal">
+                            <td colspan="7" style="text-align:right">
+                                Subtotal@(grp.HeaderLabel is null ? null : ": " + grp.HeaderLabel)
+                                · @grp.Rows.Count entr@(grp.Rows.Count == 1 ? "y" : "ies")
+                            </td>
+                        </tr>
+                    }
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.Machines.Count > 0)
+{
+    <dialog id="start-journal-dialog" class="form-dialog form-dialog-resizable">
+        <form method="post" asp-page-handler="Start" data-disable-on-submit
+              class="form-dialog-body form-dialog-body-single" data-journal-start-dialog>
+            <h2>Start journal</h2>
+            <p class="muted" style="margin:0 0 0.35rem">Times in @Model.ProfileTimeZoneId. One open entry per machine.</p>
+
+            <div class="field-stack">
+                <label for="start-machine">Machine</label>
+                <select id="start-machine" asp-for="MachineId">
+                    @foreach (var m in Model.Machines)
+                    {
+                        <option value="@Uuid7Text.Format(m.Id)">@m.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="field-stack">
+                <label for="start-start-local">Started at</label>
+                <input id="start-start-local" name="StartLocal" type="datetime-local" step="1"
+                       value="@Model.DefaultStartLocal" />
+                <p class="muted" style="margin:0.15rem 0 0;font-size:0.75rem">Leave as-is for “now”.</p>
+            </div>
+            <div class="field-stack">
+                <label for="start-customer">Customer</label>
+                <select id="start-customer" name="CustomerId" data-journal-cascade="customer">
+                    @foreach (var c in Model.Customers)
+                    {
+                        <option value="@c.Id" data-none="@(c.IsNone ? "1" : null)">@c.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="field-stack">
+                <label for="start-project">Project</label>
+                <select id="start-project" name="ProjectId" data-journal-cascade="project">
+                    @foreach (var p in Model.Projects)
+                    {
+                        <option value="@p.Id" data-parent="@p.ParentId" data-none="@(p.IsNone ? "1" : null)">@p.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="field-stack">
+                <label for="start-task">Task</label>
+                <select id="start-task" name="TaskId" data-journal-cascade="task">
+                    @foreach (var t in Model.Tasks)
+                    {
+                        <option value="@t.Id" data-parent="@t.ParentId" data-none="@(t.IsNone ? "1" : null)">@t.Label</option>
+                    }
+                </select>
+            </div>
+            <div class="field-stack">
+                <label for="start-tags">Tags</label>
+                <input id="start-tags" name="Tags" data-tags-autocomplete autocomplete="off" />
+            </div>
+            <div class="field-stack field-notes">
+                <label for="start-notes">Notes</label>
+                <textarea id="start-notes" name="Notes" rows="3"></textarea>
+            </div>
+            <div class="form-dialog-actions">
+                <button type="submit" class="btn-with-icon">
+                    <partial name="_Icon" model='"plus"' /><span>Start</span>
+                </button>
+                <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                    <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                </button>
+            </div>
+        </form>
+    </dialog>
+}
+
+<dialog id="journals-bulk-edit-dialog" class="form-dialog form-dialog-resizable">
+    <form method="post" asp-page-handler="BulkUpdate" data-disable-on-submit class="form-dialog-body">
+        <h2>Edit selected journals</h2>
+        <p class="muted" style="margin:0 0 0.5rem">Only checked fields are written. Applies customer/project/task to every selected journal.</p>
+        <div id="journals-bulk-edit-ids"></div>
+        @* SelectedIds copied here by JS on open *@
+        <div class="field-stack">
+            <label class="inline-check">
+                <input type="checkbox" name="BulkSetCustomer" value="true" id="journals-bulk-set-customer" />
+                Set customer
+            </label>
+            <select name="BulkCustomerId" id="journals-bulk-customer" data-journal-cascade="customer" disabled>
+                @foreach (var c in Model.Customers)
+                {
+                    <option value="@c.Id" data-none="@(c.IsNone ? "1" : null)">@c.Label</option>
+                }
+            </select>
+        </div>
+        <div class="field-stack">
+            <label class="inline-check">
+                <input type="checkbox" name="BulkSetProject" value="true" id="journals-bulk-set-project" />
+                Set project
+            </label>
+            <select name="BulkProjectId" id="journals-bulk-project" data-journal-cascade="project" disabled>
+                @foreach (var p in Model.Projects)
+                {
+                    <option value="@p.Id" data-parent="@p.ParentId" data-none="@(p.IsNone ? "1" : null)">@p.Label</option>
+                }
+            </select>
+        </div>
+        <div class="field-stack">
+            <label class="inline-check">
+                <input type="checkbox" name="BulkSetTask" value="true" id="journals-bulk-set-task" />
+                Set task
+            </label>
+            <select name="BulkTaskId" id="journals-bulk-task" data-journal-cascade="task" disabled>
+                @foreach (var t in Model.Tasks)
+                {
+                    <option value="@t.Id" data-parent="@t.ParentId" data-none="@(t.IsNone ? "1" : null)">@t.Label</option>
+                }
+            </select>
+        </div>
+        <div class="form-dialog-actions">
+            <button type="submit" class="btn-with-icon">
+                <partial name="_Icon" model='"save"' /><span>Apply to selected</span>
+            </button>
+            <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                <partial name="_Icon" model='"close"' /><span>Cancel</span>
+            </button>
+        </div>
+    </form>
+</dialog>
+
+@* Shared dialog editor for Home / other entry points. *@
+<partial name="_JournalEditor" model="Model.JournalEditors" />
+<partial name="_JournalTargetEditor" model="Model.JournalEditors" />

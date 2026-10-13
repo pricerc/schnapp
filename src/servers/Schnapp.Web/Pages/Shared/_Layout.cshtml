@@ -1,0 +1,98 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
+@inject Schnapp.Web.Services.ApiClient Api
+@using System.Reflection
+@{
+    var showDev = Config.GetValue("Schnapp:ShowDevTools", false);
+    var title = ViewData["Title"] as string ?? "Schnapp";
+    var signedIn = AuthCookie.GetToken(Context) is not null;
+    var isAdmin = false;
+    var path = Context.Request.Path.Value ?? "";
+    bool NavActive(string prefix) =>
+        path.Equals(prefix, StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase);
+    if (signedIn)
+    {
+        try
+        {
+            var me = await Api.GetMeAsync();
+            isAdmin = me?.Role == "Admin";
+        }
+        catch { /* nav without admin if API down */ }
+    }
+    var appVersion = typeof(Program).Assembly
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? typeof(Program).Assembly.GetName().Version?.ToString()
+        ?? "—";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@title — Schnapp</title>
+    <link rel="icon" href="~/favicon.ico" sizes="any" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="~/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="~/favicon-32.png" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+@{
+    var openViewerId = ViewData["OpenViewerId"] as string;
+}
+<body data-open-viewer="@openViewerId">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="top">
+        <a class="brand" href="/">Schnapp</a>
+        <nav aria-label="Main">
+            @if (signedIn)
+            {
+                <a class="@(path == "/" || NavActive("/Home") ? "active" : null)" href="/">Home</a>
+                <a class="@(NavActive("/Journals") ? "active" : null)" href="/Journals">Journals</a>
+                <a class="@(NavActive("/Reports") ? "active" : null)" href="/Reports">Reports</a>
+                <a class="@(NavActive("/Customers") || NavActive("/Lists") ? "active" : null)" href="/Customers">Customers</a>
+                <a class="@(NavActive("/Tags") ? "active" : null)" href="/Tags">Tags</a>
+                <ul class="dropnav dropnav-right">
+                    @if (isAdmin)
+                    {
+                        <li tabindex="0">
+                            <a class="@(NavActive("/Admin") ? "active" : null)" href="/Admin/Users">Admin ▾</a>
+                            <ul>
+                                <li><a href="/Admin/Users">Users</a></li>
+                                <li><a href="/Admin/Machines">Machines</a></li>
+                                <li><a href="/Admin/Settings">Settings</a></li>
+                            </ul>
+                        </li>
+                    }
+                    <li tabindex="0">
+                        <a class="@(NavActive("/Account") || NavActive("/Profile") || NavActive("/Status") || NavActive("/About") ? "active" : null)" href="/Account/Profile">Account ▾</a>
+                        <ul>
+                            <li><a href="/Account/Profile">Profile</a></li>
+                            <li><a href="/Account/Status">Status</a></li>
+                            <li><a href="/Account/About">About</a></li>
+                            <li><a href="/Logout">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            }
+            else
+            {
+                <a href="/Login">Login</a>
+            }
+        </nav>
+    </header>
+
+    @if (showDev)
+    {
+        <div class="dev-banner">Dev tools enabled (<code>Schnapp:ShowDevTools</code>).</div>
+    }
+
+    <main id="main" class="container@(ViewData["Wide"] is true ? " wide" : "")">
+        @RenderBody()
+    </main>
+    <footer class="site-footer">
+        <span class="muted">Schnapp <span class="site-version" title="Build version">@appVersion</span></span>
+    </footer>
+    <script src="~/js/site.js" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

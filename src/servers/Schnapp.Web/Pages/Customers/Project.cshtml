@@ -1,0 +1,195 @@
+@page "/Customers/{code}/Projects/{projectCode}"
+@using Schnapp.Domain
+@model Schnapp.Web.Pages.Customers.ProjectModel
+@{
+    ViewData["Title"] = Model.Project?.Name ?? "Project";
+    ViewData["Wide"] = true;
+}
+
+@if (Model.Customer is not null)
+{
+    <p class="muted">
+        <a href="/Customers">Customers</a> /
+        <a href="/Customers/@Uri.EscapeDataString(Model.Customer.Code)">@Model.Customer.Name</a>
+    </p>
+}
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+@if (Model.Project is not null && Model.Customer is not null)
+{
+    <div class="card">
+        <h1>@Model.Project.Name</h1>
+        <form method="post" asp-page-handler="Save" data-disable-on-submit>
+            <div class="entity-fields">
+                <div class="entity-col entity-col-left">
+                    <div class="field-row">
+                        <label asp-for="Input.Code">Code</label>
+                        <input asp-for="Input.Code" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Name">Name</label>
+                        <input asp-for="Input.Name" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Tags">Tags</label>
+                        <input asp-for="Input.Tags" />
+                    </div>
+                </div>
+                <div class="entity-col entity-col-right">
+                    <div class="field-row">
+                        <label asp-for="Input.Status">Status</label>
+                        <select asp-for="Input.Status">
+                            @foreach (var (value, label) in ListEntityStatus.All)
+                            {
+                                if (Model.Input.Status == value)
+                                {
+                                    <option value="@value" selected>@label</option>
+                                }
+                                else
+                                {
+                                    <option value="@value">@label</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.ColourCode">Colour</label>
+                        <div class="colour-field">
+                            <input type="color" value="@(string.IsNullOrWhiteSpace(Model.Input.ColourCode) || Model.Input.ColourCode[0] != '#' ? "#5b9fd4" : Model.Input.ColourCode)" aria-label="Colour swatch" />
+                            <input asp-for="Input.ColourCode" type="text" placeholder="#rrggbb or name" />
+                        </div>
+                    </div>
+                </div>
+                <div class="field-row field-notes-row entity-notes-span">
+                    <label asp-for="Input.Notes">Notes</label>
+                    <textarea asp-for="Input.Notes" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="entity-footer">
+                <div class="form-actions">
+                    <button type="submit" class="btn-with-icon" formaction="?handler=Save">
+                        <partial name="_Icon" model='"save"' /><span>Save</span>
+                    </button>
+                    <button type="submit" class="btn-with-icon secondary" formaction="?handler=SaveAndClose">
+                        <partial name="_Icon" model='"save-close"' /><span>Save and close</span>
+                    </button>
+                    <a class="btn btn-with-icon secondary" href="/Customers/@Uri.EscapeDataString(Model.Customer.Code)">
+                        <partial name="_Icon" model='"close"' /><span>Close</span>
+                    </a>
+                </div>
+                <p class="entity-id">Id: <code>@Schnapp.Contracts.Uuid7Text.Format(Model.Project.Id)</code></p>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="page-head">
+            <div>
+                <h2 style="margin-bottom:0.25rem">Project tasks</h2>
+                <p class="muted" style="margin:0">Task code unique within project. Inherits customer from this project.</p>
+            </div>
+            <button type="button" class="btn-with-icon" data-open-dialog="create-project-task-dialog">
+                <partial name="_Icon" model='"plus"' /><span>Add task</span>
+            </button>
+        </div>
+        <div class="table-wrap">
+            <table class="data-grid">
+                <thead>
+                    <tr>
+                        <th>Code</th><th>Name</th><th>Tags</th><th>Notes</th>
+                        @if (Model.IsAdmin) { <th>Id</th> }
+                        <th class="actions" title="Edit"><span class="sr-only">Edit</span></th>
+                        <th class="actions" title="Delete"><span class="sr-only">Delete</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var t in Model.Tasks)
+                {
+                    <tr>
+                        <td><code>@t.Code</code></td>
+                        <td>@t.Name</td>
+                        <td class="muted">@t.Tags</td>
+                        <td class="muted">@t.Notes</td>
+                        @if (Model.IsAdmin) { <td><code>@Schnapp.Contracts.Uuid7Text.Format(t.Id)</code></td> }
+                        <td class="actions">
+                            <a class="icon-btn" href="/Customers/Tasks/@Schnapp.Contracts.Uuid7Text.Format(t.Id)"
+                               title="Edit @t.Name" aria-label="Edit @t.Name">
+                                <partial name="_Icon" model='"edit"' />
+                            </a>
+                        </td>
+                        <td class="actions">
+                            @if (t.Id != WellKnownIds.None)
+                            {
+                                <form method="post" asp-page-handler="DeleteTask" asp-route-id="@Schnapp.Contracts.Uuid7Text.Format(t.Id)" class="inline-form">
+                                    <button type="submit" class="icon-btn danger" title="Delete @t.Code" aria-label="Delete @t.Code"
+                                            data-confirm="Delete task @t.Code?">
+                                        <partial name="_Icon" model='"trash"' />
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Tasks.Count == 0)
+                {
+                    <tr><td colspan="6" class="muted">No tasks yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <dialog id="create-project-task-dialog" class="form-dialog form-dialog-resizable">
+        <form method="post" asp-page-handler="CreateTask" data-disable-on-submit class="form-dialog-body"
+              data-code-suggest data-code-existing="@Model.TaskCodesJson">
+            <h2>Add project task</h2>
+            <div class="entity-fields">
+                <div class="entity-col entity-col-left">
+                    <div class="field-row">
+                        <label asp-for="NewTask.Code">Code</label>
+                        <input asp-for="NewTask.Code" data-code-field autocomplete="off"
+                               placeholder="auto from name" title="Suggested from name as STEM###" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="NewTask.Name">Name</label>
+                        <input asp-for="NewTask.Name" data-name-field autofocus />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="NewTask.Tags">Tags</label>
+                        <input asp-for="NewTask.Tags" />
+                    </div>
+                </div>
+                <div class="entity-col entity-col-right">
+                    <div class="field-row">
+                        <label asp-for="NewTask.Status">Status</label>
+                        <select asp-for="NewTask.Status">
+                            @foreach (var (value, label) in ListEntityStatus.All)
+                            {
+                                <option value="@value">@label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="NewTask.ColourCode">Colour</label>
+                        <div class="colour-field">
+                            <input type="color" value="#5b9fd4" aria-label="Colour swatch" />
+                            <input asp-for="NewTask.ColourCode" type="text" placeholder="#rrggbb or name" />
+                        </div>
+                    </div>
+                </div>
+                <div class="field-row field-notes-row entity-notes-span">
+                    <label asp-for="NewTask.Notes">Notes</label>
+                    <textarea asp-for="NewTask.Notes" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="form-dialog-actions">
+                <button type="submit" class="btn-with-icon">
+                    <partial name="_Icon" model='"plus"' /><span>Create task</span>
+                </button>
+                <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                    <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                </button>
+            </div>
+        </form>
+    </dialog>
+}

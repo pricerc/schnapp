@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+# Refresh /etc/issue + /etc/motd after network is up (and again after DHCP delay).
+
+description="Schnapp login banners (/etc/issue + /etc/motd)"
+
+depend() {
+	need localmount
+	after net dhcpcd networking schnapp-data-volume
+	use dns
+}
+
+start() {
+	ebegin "Updating Schnapp login banners"
+	/usr/local/sbin/schnapp-update-issue
+	# DHCP often completes *after* default runlevel starts — refresh again shortly
+	( sleep 5; /usr/local/sbin/schnapp-update-issue ) >/dev/null 2>&1 &
+	( sleep 20; /usr/local/sbin/schnapp-update-issue ) >/dev/null 2>&1 &
+	eend $?
+}
+
+stop() {
+	return 0
+}

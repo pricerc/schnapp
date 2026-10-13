@@ -1,0 +1,115 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Schnapp.Client.Linux.Views.SettingsWindow"
+        Icon="/Assets/app-icon.ico"
+        Title="Schnapp settings"
+        Width="720" Height="920"
+        WindowStartupLocation="Manual">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8"
+                HorizontalAlignment="Right" Margin="0,12,0,0">
+
+      <Button Content="Save" Click="OnSave"/>
+      <Button Content="Close" Click="OnClose"/>
+    </StackPanel>
+    <TabControl>
+      <TabItem Header="Capture">
+        <ScrollViewer>
+          <StackPanel Margin="0,12,12,0" Spacing="8">
+            <TextBlock Text="Interval seconds (min 15)"/>
+            <NumericUpDown x:Name="IntervalBox" Minimum="15" Maximum="3600" Value="120"
+                           Width="200" HorizontalAlignment="Left" />
+            <CheckBox x:Name="SkipScreensaverBox" Content="Skip capture when screensaver is active"/>
+            <TextBlock Text="Pause capture after idle (minutes; 0 = off)"/>
+            <NumericUpDown x:Name="IdlePauseBox" Minimum="0" Maximum="1440" Value="0"
+                           Width="200" HorizontalAlignment="Left" />
+            <CheckBox x:Name="DiscardBlankBox" Content="Discard blank (all-black) captures"/>
+            <CheckBox x:Name="DiscardIdleBox" Content="Discard idle duplicates (almost-unchanged screen)"/>
+            <TextBlock Text="Idle duplicate tolerance (dirty cells; 1–20, default 2)"/>
+            <NumericUpDown x:Name="IdleDirtyCellsBox" Minimum="1" Maximum="20" Value="2"
+                           Width="200" HorizontalAlignment="Left" />
+            <Separator Margin="0,8,0,0"/>
+            <TextBlock Text="Image format"/>
+            <ComboBox x:Name="CaptureFormatBox" HorizontalAlignment="Left" Width="200"
+                      SelectionChanged="OnCaptureFormatChanged">
+              <ComboBoxItem Content="JPEG (default, small, lossy)"/>
+              <ComboBoxItem Content="PNG (lossless, larger)"/>
+              <ComboBoxItem Content="WebP (small, lossy)"/>
+              <ComboBoxItem Content="WebP lossless"/>
+            </ComboBox>
+
+            <TextBlock x:Name="QualityLabel" Text="Default quality (JPEG / WebP lossy)"/>
+            <NumericUpDown x:Name="QualityBox" Minimum="10" Maximum="100" Increment="5" Value="80"
+                           Width="200" HorizontalAlignment="Left"
+                           />
+
+
+            <Separator Margin="0,8,0,0"/>
+            <TextBlock Text="Capture targets (any combination)" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            <CheckBox x:Name="CaptureFullBox"
+                      Content="Full desktop (single image for all monitors)"
+                      IsCheckedChanged="OnCaptureTargetsChanged"/>
+            <TextBlock x:Name="DesktopScaleLabel"
+                       Text="Full desktop scale (auto = min monitor X11 scale)"
+                       Opacity="0.8"
+                       IsVisible="False"
+                       Margin="8,0,0,0"/>
+            <StackPanel x:Name="DesktopScalePanel" Spacing="4" IsVisible="False" Margin="8,0,0,0"/>
+            <CheckBox x:Name="CaptureWindowBox"
+                      Content="Active window (uses scale/quality of the monitor it is on)"
+                      IsCheckedChanged="OnCaptureTargetsChanged"/>
+            <CheckBox x:Name="CaptureMonitorsBox"
+                      Content="Monitors (separate images)"
+                      ToolTip.Tip="If you have multiple monitors, you can choose which ones to capture. If none are checked, all monitors will be captured."
+                      IsCheckedChanged="OnCaptureTargetsChanged"/>
+            <CheckBox x:Name="ShowMonitorSettingsBox"
+                      Content="Show monitor-specific settings"
+                      IsVisible="False"
+                      Margin="8,0,0,0"
+                      IsCheckedChanged="OnShowMonitorSettingsChanged"/>
+            <TextBlock x:Name="MonitorPickLabel"
+                       Text="Per-monitor scale/quality. Window captures inherit the monitor the window is on."
+                       Opacity="0.8"
+                       IsVisible="False"
+                       TextWrapping="Wrap"/>
+            <StackPanel x:Name="MonitorListPanel" Spacing="10" IsVisible="False" Margin="8,0,0,0"
+                        HorizontalAlignment="Stretch"/>
+          <Separator Margin="0,8,0,0"/>
+
+
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="Paths">
+        <StackPanel Margin="0,12,0,0" Spacing="8">
+
+          <TextBlock Text="API base URL"/>
+          <TextBox x:Name="ApiUrlBox"/>
+          <Separator Margin="0,8,0,0"/>
+          <TextBlock Text="Offline data paths (optional overrides)" FontWeight="SemiBold" Margin="0,8,0,0"/>
+          <TextBlock Text="Screenshot spool directory" Opacity="0.8"/>
+          <TextBox x:Name="SpoolDirBox" PlaceholderText="default: ~/.local/share/schnapp/spool"/>
+          <TextBlock Text="Mutation queue directory" Opacity="0.8"/>
+          <TextBox x:Name="MutationsDirBox" PlaceholderText="default: ~/.local/share/schnapp/mutations"/>
+          <Separator Margin="0,8,0,0"/><TextBlock Text="File log level" Opacity="0.8"/>
+          <ComboBox x:Name="FileLogLevelBox" Width="140">
+            <ComboBoxItem Content="Off"/>
+            <ComboBoxItem Content="Error"/>
+            <ComboBoxItem Content="Warn"/>
+            <ComboBoxItem Content="Info"/>
+            <ComboBoxItem Content="Debug"/>
+          </ComboBox>
+          <Separator Margin="0,8,0,0" VerticalAlignment="Stretch"/>
+          <TextBlock Text="Config: ~/.config/schnapp · Data: ~/.local/share/schnapp"
+                     Opacity="0.7" TextWrapping="Wrap"/>
+          <Separator Margin="0,8,0,0" VerticalAlignment="Stretch"/>
+          <TextBlock x:Name="InfoText" DockPanel.Dock="Bottom" TextWrapping="Wrap"
+                     Opacity="0.8" Margin="0,8,0,0"/>
+
+        </StackPanel>
+      </TabItem>
+
+
+    </TabControl>
+  </DockPanel>
+</Window>

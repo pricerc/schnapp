@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Schnapp.Utils</RootNamespace>
+    <AssemblyName>schnapp-utils</AssemblyName>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\Schnapp.Imaging\Schnapp.Imaging.csproj" />
+    <ProjectReference Include="..\..\common\Schnapp.ScreenshotEncode\Schnapp.ScreenshotEncode.csproj" />
+    <ProjectReference Include="..\..\servers\Schnapp.Data\Schnapp.Data.csproj" />
+    <ProjectReference Include="..\..\servers\Schnapp.Domain\Schnapp.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="4.1.1" />
+  </ItemGroup>
+</Project>

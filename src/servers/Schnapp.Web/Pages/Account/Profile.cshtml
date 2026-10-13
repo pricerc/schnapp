@@ -1,0 +1,158 @@
+@page
+@model Schnapp.Web.Pages.Account.ProfileModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Schnapp.Domain
+@{
+    ViewData["Title"] = "Profile";
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+<div class="card">
+    <h1>Profile</h1>
+    <form method="post" data-disable-on-submit>
+        <div class="entity-fields">
+            <div class="entity-col entity-col-left">
+                <div class="field-row">
+                    <label asp-for="Input.Code">Code</label>
+                    <input asp-for="Input.Code" readonly class="muted" />
+                </div>
+                <div class="field-row">
+                    <label asp-for="Input.Name">Name</label>
+                    <input asp-for="Input.Name" />
+                </div>
+                <div class="field-row">
+                    <label>Email</label>
+                    <input value="@Model.Email" readonly class="muted" />
+                </div>
+                <div class="field-row">
+                    <label asp-for="Input.Tags">Tags</label>
+                    <input asp-for="Input.Tags" />
+                </div>
+            </div>
+            <div class="entity-col entity-col-right">
+                <div class="field-row">
+                    <label asp-for="Input.Status">Status</label>
+                    <select asp-for="Input.Status">
+                        @foreach (var (value, label) in ListEntityStatus.All)
+                        {
+                            if (Model.Input.Status == value)
+                            {
+                                <option value="@value" selected>@label</option>
+                            }
+                            else
+                            {
+                                <option value="@value">@label</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label asp-for="Input.ColourCode">Colour</label>
+                    <div class="colour-field">
+                        <input type="color" value="@(string.IsNullOrWhiteSpace(Model.Input.ColourCode) || Model.Input.ColourCode[0] != '#' ? "#5b9fd4" : Model.Input.ColourCode)" aria-label="Colour swatch" />
+                        <input asp-for="Input.ColourCode" type="text" placeholder="#rrggbb or name" />
+                    </div>
+                </div>
+                <div class="field-row">
+                    <label asp-for="Input.TimeZoneId">Timezone</label>
+                    <select asp-for="Input.TimeZoneId" asp-items="@(new SelectList(Model.TimeZoneOptions))"></select>
+                </div>
+            </div>
+            <div class="field-row field-notes-row entity-notes-span">
+                <label asp-for="Input.Notes">Notes</label>
+                <textarea asp-for="Input.Notes" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="entity-footer">
+            <div class="form-actions">
+                <button type="submit" class="btn-with-icon">
+                    <partial name="_Icon" model='"save"' /><span>Save</span>
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.UserId))
+            {
+                <p class="entity-id">Id: <code>@Model.UserId</code></p>
+            }
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>My machines</h2>
+    @if (Model.Machines.Count > 0)
+    {
+        <form method="get" class="day-nav-form" style="margin-bottom:0.75rem">
+            <div>
+                <label for="machineStatus">Status</label>
+                <select id="machineStatus" name="machineStatus" onchange="this.form.submit()">
+                    @if (Model.MachineStatusFilter is null)
+                    {
+                        <option value="" selected>All</option>
+                    }
+                    else
+                    {
+                        <option value="">All</option>
+                    }
+                    @foreach (var (value, label) in MachineStatus.All)
+                    {
+                        if (Model.MachineStatusFilter == value)
+                        {
+                            <option value="@value" selected>@label</option>
+                        }
+                        else
+                        {
+                            <option value="@value">@label</option>
+                        }
+                    }
+                </select>
+            </div>
+        </form>
+    }
+    @if (Model.FilteredMachines.Count == 0)
+    {
+        <div class="empty-state">
+            @if (Model.Machines.Count == 0)
+            {
+                <strong>No machines linked</strong>
+                <text>An admin can register machines under Admin · Machines.</text>
+            }
+            else
+            {
+                <strong>No machines match this filter</strong>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-grid">
+                <thead>
+                    <tr>
+                        <th>Name</th><th>Code</th><th>FQDN</th><th>Status</th><th>Id</th>
+                        <th class="actions" title="Edit"><span class="sr-only">Edit</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var m in Model.FilteredMachines)
+                {
+                    var mid = Schnapp.Contracts.Uuid7Text.Format(m.Id);
+                    var statusClass = m.Status == MachineStatus.Disabled ? "status-disabled" : "status-active";
+                    <tr>
+                        <td>@m.Name</td>
+                        <td><code>@m.Code</code></td>
+                        <td class="muted">@(m.Fqdn ?? "—")</td>
+                        <td><span class="status-pill @statusClass">@MachineStatus.Label(m.Status)</span></td>
+                        <td><code>@mid</code></td>
+                        <td class="actions">
+                            <a class="icon-btn" href="/Machines/@mid?from=/Account/Profile" title="Edit @m.Name" aria-label="Edit @m.Name">
+                                <partial name="_Icon" model='"edit"' />
+                            </a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

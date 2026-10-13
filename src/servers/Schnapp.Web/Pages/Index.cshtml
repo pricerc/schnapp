@@ -1,0 +1,818 @@
+@page
+@model Schnapp.Web.Pages.IndexModel
+@{
+    ViewData["Title"] = $"Home {Model.Date}";
+    ViewData["Wide"] = true;
+    string Qs(string date)
+    {
+        var parts = new List<string> { $"date={Uri.EscapeDataString(date)}" };
+        if (!string.IsNullOrWhiteSpace(Model.MonitorFilter))
+            parts.Add($"monitor={Uri.EscapeDataString(Model.MonitorFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.MachineFilter))
+            parts.Add($"Machine={Uri.EscapeDataString(Model.MachineFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.FromTimeFilter))
+            parts.Add($"FromTime={Uri.EscapeDataString(Model.FromTimeFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.ToTimeFilter))
+            parts.Add($"ToTime={Uri.EscapeDataString(Model.ToTimeFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.JournalFilter))
+            parts.Add($"Journal={Uri.EscapeDataString(Model.JournalFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.TagsFilter))
+            parts.Add($"TagsQ={Uri.EscapeDataString(Model.TagsFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.CustomerFilter))
+            parts.Add($"Customer={Uri.EscapeDataString(Model.CustomerFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.ProjectFilter))
+            parts.Add($"Project={Uri.EscapeDataString(Model.ProjectFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.TaskFilter))
+            parts.Add($"Task={Uri.EscapeDataString(Model.TaskFilter)}");
+        if (!string.IsNullOrWhiteSpace(Model.GroupByNormalized) && Model.GroupByNormalized != "journal")
+            parts.Add($"GroupBy={Uri.EscapeDataString(Model.GroupByNormalized)}");
+        if (!string.IsNullOrWhiteSpace(Model.SortBy) && Model.SortBy != "time")
+            parts.Add($"Sort={Uri.EscapeDataString(Model.SortBy)}");
+        // Default is descending; only keep Dir when ascending.
+        if (!string.IsNullOrWhiteSpace(Model.SortDir) && Model.SortDir == "asc")
+            parts.Add($"Dir={Uri.EscapeDataString(Model.SortDir)}");
+        return "?" + string.Join("&", parts);
+    }
+    var metaColspan = Model.MonitorColumns.Count + 6; // lead (select+actions) + time + machine + monitors + target + tags + notes
+    var dateLabel = DateOnly.TryParse(Model.Date, out var day)
+        ? day.ToString("dddd, dd MMMM yyyy")
+        : Model.Date;
+}
+
+<div id="home-flash">
+    <partial name="_Flash" model="(Model.Message, Model.Error)" />
+</div>
+
+<section id="home-gallery" class="card row-select-enabled">
+    <div id="home-gallery-head" class="page-head">
+        <div>
+            <h1 id="home-title">Home</h1>
+        </div>
+        <div id="home-head-actions" class="page-head-actions">
+            <label id="home-enable-shot-select-label" class="inline-check" title="Show per-image checkboxes for bulk screenshot delete">
+                <input type="checkbox" id="home-enable-shot-select" />
+                <span>Select images</span>
+            </label>
+            <label id="home-dup-sensitivity-label" class="inline-check" title="How many grid cells may change and still count as idle (1-20)">
+                <span>Idle cells</span>
+                <input type="range" id="home-dup-sensitivity" min="1" max="20" step="1" value="2"
+                       aria-valuemin="1" aria-valuemax="20" aria-label="Duplicate sensitivity" />
+                <span id="home-dup-sensitivity-value">2</span>
+            </label>
+            <button type="button" id="home-mark-duplicates" class="btn-with-icon secondary"
+                    title="Select blank and idle-duplicate screenshots on this day">
+                <partial name="_Icon" model='"check"' /><span>Mark duplicates</span>
+            </button>
+            <button type="submit" id="home-delete-selected" form="home-bulk-delete-form" class="btn-with-icon secondary"
+                    disabled
+                    data-confirm="Delete all selected screenshots? This cannot be undone.">
+                <partial name="_Icon" model='"trash"' /><span>Delete selected</span>
+            </button>
+            <button type="button" id="home-open-upload" class="btn-with-icon" data-open-dialog="home-upload-dialog"
+                    @(Model.Machines.Count == 0 ? "disabled" : null)
+                    title="@(Model.Machines.Count == 0 ? "Register a machine first (Admin · Machines)" : "Upload a screenshot")">
+                <partial name="_Icon" model='"plus"' /><span>Upload</span>
+            </button>
+        </div>
+    </div>
+
+    <nav id="home-day-nav" class="day-nav" aria-label="Day navigation">
+        <a id="home-prev-day" class="btn secondary" href="/@Qs(Model.PrevDate)">← Prev</a>
+        <a id="home-next-day" class="btn secondary" href="/@Qs(Model.NextDate)">Next →</a>
+        <a id="home-today" class="btn secondary" href="/">Today</a>
+    </nav>
+
+    <div id="home-grid-meta" class="home-grid-meta">
+        <p id="home-subtitle" class="muted home-subtitle">
+            Capture batches for <strong id="home-date-label">@dateLabel</strong>
+            · <span id="home-timezone-label">@Model.ProfileTimeZoneId</span>
+        </p>
+        <span id="home-batch-count" class="muted home-batch-count">@Model.Rows.Count batch(es)</span>
+    </div>
+
+    <form id="home-day-filter-form" method="get" class="day-filter-form home-day-filters" aria-label="Day filters">
+        <div id="home-filter-row-primary" class="home-filter-row">
+            <label id="home-filter-day" for="home-date-input">
+                Day
+                <input id="home-date-input" type="date" name="date" value="@Model.Date" />
+            </label>
+            <label id="home-filter-monitor" for="home-monitor-select">
+                Monitor
+                <select id="home-monitor-select" name="monitor">
+                    @if (string.IsNullOrEmpty(Model.MonitorFilter))
+                    {
+                        <option value="" selected>All</option>
+                    }
+                    else
+                    {
+                        <option value="">All</option>
+                    }
+                    @foreach (var m in Model.MonitorFilterOptions)
+                    {
+                        if (string.Equals(m, Model.MonitorFilter, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <option value="@m" selected>@m</option>
+                        }
+                        else
+                        {
+                            <option value="@m">@m</option>
+                        }
+                    }
+                </select>
+            </label>
+            <label id="home-filter-from" for="home-from-time">
+                From
+                <input id="home-from-time" type="time" name="FromTime" value="@Model.FromTimeFilter" />
+            </label>
+            <label id="home-filter-to" for="home-to-time">
+                To
+                <input id="home-to-time" type="time" name="ToTime" value="@Model.ToTimeFilter" />
+            </label>
+            <label id="home-filter-journal" for="home-journal-filter">
+                Journal
+                <input id="home-journal-filter" type="search" name="Journal" value="@Model.JournalFilter" placeholder="All…" />
+            </label>
+            <label id="home-filter-tags" for="home-tags-filter">
+                Tags
+                <input id="home-tags-filter" type="search" name="TagsQ" value="@Model.TagsFilter" placeholder="All…" />
+            </label>
+            <label id="home-filter-groupby" for="home-groupby-select">
+                Group by
+                <select id="home-groupby-select" name="GroupBy" aria-label="Group by">
+                    @foreach (var g in IndexModel.GroupByOptions)
+                    {
+                        if (g.Id == Model.GroupByNormalized)
+                        {
+                            <option value="@g.Id" selected>@g.Label</option>
+                        }
+                        else
+                        {
+                            <option value="@g.Id">@g.Label</option>
+                        }
+                    }
+                </select>
+            </label>
+            <button id="home-filter-go" type="submit">Apply</button>
+        </div>
+        <div id="home-filter-row-cpt" class="home-filter-row">
+            <label id="home-filter-machine" for="home-machine-select">
+                Machine
+                <select id="home-machine-select" name="Machine">
+                    @if (string.IsNullOrEmpty(Model.MachineFilter))
+                    {
+                        <option value="" selected>All</option>
+                    }
+                    else
+                    {
+                        <option value="">All</option>
+                    }
+                    @foreach (var m in Model.MachineFilterOptions)
+                    {
+                        if (string.Equals(m.Id, Model.MachineFilter, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <option value="@m.Id" selected>@m.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@m.Id">@m.Name</option>
+                        }
+                    }
+                </select>
+            </label>
+            <label id="home-filter-customer" for="home-customer-filter">
+                Customer
+                <input id="home-customer-filter" type="search" name="Customer" value="@Model.CustomerFilter"
+                       list="home-filter-customers" placeholder="All…" autocomplete="off" />
+            </label>
+            <label id="home-filter-project" for="home-project-filter">
+                Project
+                <input id="home-project-filter" type="search" name="Project" value="@Model.ProjectFilter"
+                       list="home-filter-projects" placeholder="All…" autocomplete="off" />
+            </label>
+            <label id="home-filter-task" for="home-task-filter">
+                Task
+                <input id="home-task-filter" type="search" name="Task" value="@Model.TaskFilter"
+                       list="home-filter-tasks" placeholder="All…" autocomplete="off" />
+            </label>
+        </div>
+        <datalist id="home-filter-customers">
+            @foreach (var c in Model.CustomerFilterOptions) { <option value="@c"></option> }
+        </datalist>
+        <datalist id="home-filter-projects">
+            @foreach (var p in Model.ProjectFilterOptions) { <option value="@p"></option> }
+        </datalist>
+        <datalist id="home-filter-tasks">
+            @foreach (var t in Model.TaskFilterOptions) { <option value="@t"></option> }
+        </datalist>
+        @if (Model.SortBy != "time")
+        {
+            <input type="hidden" name="Sort" value="@Model.SortBy" />
+        }
+        @if (Model.SortDir == "asc")
+        {
+            <input type="hidden" name="Dir" value="@Model.SortDir" />
+        }
+    </form>
+
+    @if (Model.Rows.Count == 0)
+    {
+        <div id="home-empty-state" class="empty-state">
+            <strong>No captures this day</strong>
+            Try another date, clear filters, or use <strong>Upload</strong>.
+        </div>
+    }
+    else
+    {
+        <div id="home-row-toolbar" class="toolbar home-row-toolbar">
+            <button type="button" id="home-bulk-edit-rows" class="btn-with-icon secondary"
+                    title="Edit selected rows">
+                <partial name="_Icon" model='"edit"' /><span>Edit rows</span>
+            </button>
+            <button type="submit" id="home-bulk-delete-rows" form="home-bulk-rows-form" class="btn-with-icon secondary"
+                    formaction="@Url.Page("/Index", "BulkDeleteRows")"
+                    disabled
+                    data-confirm="Delete all screenshots in selected rows? This cannot be undone.">
+                <partial name="_Icon" model='"trash"' /><span>Delete rows</span>
+            </button>
+            <span id="home-row-selected-count" class="muted">0 row(s) selected</span>
+            <div id="home-view-controls" class="home-view-controls">
+                <div id="home-thumb-scale" class="thumb-scale" title="Thumbnail size (one step per stored size)">
+                    <label for="home-thumb-scale-input">Thumbs</label>
+                    <input type="range" id="home-thumb-scale-input" min="1" max="@Schnapp.Contracts.ThumbTiers.Sizes.Count" step="1" value="1"
+                           data-tiers="@string.Join(",", Schnapp.Contracts.ThumbTiers.Sizes)"
+                           aria-valuemin="1" aria-valuemax="@Schnapp.Contracts.ThumbTiers.Sizes.Count" aria-label="Thumbnail size" />
+                    <span id="home-thumb-scale-value" class="thumb-scale-value">@Schnapp.Contracts.ThumbTiers.Sizes[0]px</span>
+                </div>
+                <div id="home-col-picker" class="col-picker">
+                    <button type="button" id="home-col-picker-btn" class="btn secondary btn-with-icon"
+                            aria-expanded="false" aria-controls="home-col-picker-panel"
+                            title="Show or hide grid columns">
+                        <partial name="_Icon" model='"columns"' /><span>Columns</span>
+                    </button>
+                    <div id="home-col-picker-panel" class="col-picker-panel" hidden role="group" aria-label="Visible columns">
+                        <label class="col-picker-item">
+                            <input type="checkbox" data-col-toggle="time" checked disabled title="Timestamp is always shown" />
+                            <span>Timestamp</span>
+                        </label>
+                        <label class="col-picker-item">
+                            <input type="checkbox" data-col-toggle="machine" checked />
+                            <span>Machine</span>
+                        </label>
+                        @foreach (var col in Model.MonitorColumns)
+                        {
+                            var shotKey = "shot-" + col.Replace(' ', '-');
+                            <label class="col-picker-item">
+                                <input type="checkbox" data-col-toggle="@shotKey" checked />
+                                <span>@col</span>
+                            </label>
+                        }
+                        <label class="col-picker-item">
+                            <input type="checkbox" data-col-toggle="target" checked />
+                            <span>Journal target</span>
+                        </label>
+                        <label class="col-picker-item">
+                            <input type="checkbox" data-col-toggle="tags" checked />
+                            <span>Tags</span>
+                        </label>
+                        <label class="col-picker-item">
+                            <input type="checkbox" data-col-toggle="notes" checked />
+                            <span>Notes</span>
+                        </label>
+                        <button type="button" id="home-col-picker-reset" class="btn secondary small col-picker-reset">Show all</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form id="home-bulk-delete-form" method="post" asp-page-handler="BulkDelete" data-disable-on-submit class="home-bulk-delete-form">
+            <input type="hidden" id="home-bulk-date" name="date" value="@Model.Date" />
+            <input type="hidden" id="home-bulk-monitor" name="monitor" value="@Model.MonitorFilter" />
+            <input type="hidden" id="home-bulk-machine" name="Machine" value="@Model.MachineFilter" />
+            <input type="hidden" id="home-bulk-from" name="FromTime" value="@Model.FromTimeFilter" />
+            <input type="hidden" id="home-bulk-to" name="ToTime" value="@Model.ToTimeFilter" />
+            <input type="hidden" name="Journal" value="@Model.JournalFilter" />
+            <input type="hidden" name="TagsQ" value="@Model.TagsFilter" />
+            <input type="hidden" name="Customer" value="@Model.CustomerFilter" />
+            <input type="hidden" name="Project" value="@Model.ProjectFilter" />
+            <input type="hidden" name="Task" value="@Model.TaskFilter" />
+            <input type="hidden" name="GroupBy" value="@Model.GroupByNormalized" />
+            <input type="hidden" name="Sort" value="@Model.SortBy" />
+            <input type="hidden" name="Dir" value="@Model.SortDir" />
+
+            <div id="home-timeline-scroll-top" class="timeline-scroll-top">
+                <div id="home-timeline-scroll-top-spacer"></div>
+            </div>
+            <div id="home-timeline-wrap" class="timeline-wrap">
+                <table id="home-timeline" class="timeline">
+                    <thead id="home-timeline-head">
+                        <tr>
+                            <th id="home-col-lead" class="col-lead" data-col="lead" title="Select and row actions">
+                                <input type="checkbox" id="home-select-all-rows" aria-label="Select all rows" />
+                            </th>
+                            <th id="home-col-timestamp" class="col-time" data-col="time">
+                                <a class="th-sort" href="@Model.SortHref("time")">Time@(Model.SortIndicator("time"))</a>
+                            </th>
+                            <th id="home-col-machine" data-col="machine">
+                                <a class="th-sort" href="@Model.SortHref("machine")">Machine@(Model.SortIndicator("machine"))</a>
+                            </th>
+                            @foreach (var col in Model.MonitorColumns)
+                            {
+                                var shotKey = "shot-" + col.Replace(' ', '-');
+                                <th id="home-col-@col.Replace(' ', '-')" class="shot-cell" data-col="@shotKey">@col</th>
+                            }
+                            <th id="home-col-target" data-col="target">
+                                <a class="th-sort" href="@Model.SortHref("target")" title="Per-image linked journal target (not time covering)">Linked journal@(Model.SortIndicator("target"))</a>
+                            </th>
+                            <th id="home-col-tags" data-col="tags">
+                                <a class="th-sort" href="@Model.SortHref("tags")">Tags@(Model.SortIndicator("tags"))</a>
+                            </th>
+                            <th id="home-col-notes" data-col="notes">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="home-timeline-body">
+                    @{
+                        var rowIndex = 0;
+                    }
+                    @foreach (var row in Model.Rows)
+                    {
+                        var rowId = $"home-row-{rowIndex}";
+                        if (row.ShowGroupHeading)
+                        {
+                            <tr id="@rowId-group" class="journal-group-row">
+                                <td colspan="@metaColspan">
+                                    <div class="journal-group-head">
+                                        <div class="journal-group-label">
+                                            <strong>@row.GroupHeadingLabel</strong>
+                                            @if (Model.GroupByNormalized == "journal" && string.IsNullOrEmpty(row.GroupHeadingJournalId))
+                                            {
+                                                <span class="muted">(none covering this time)</span>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(row.GroupHeadingJournalId))
+                                        {
+                                            <a id="@rowId-group-open-journal"
+                                               class="btn-with-icon secondary small"
+                                               href="/Journals/Edit/@row.GroupHeadingJournalId"
+                                               title="Open covering journal">
+                                                <partial name="_Icon" model='"link"' /><span>Open journal</span>
+                                            </a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        if (row.ShowGapBefore && !row.ShowGroupHeading)
+                        {
+                            <tr id="@rowId-gap" class="gap-row">
+                                <td class="col-time" colspan="@metaColspan">— gap ≥ 10 min —</td>
+                            </tr>
+                        }
+                        else if (row.ShowGapBefore && row.ShowGroupHeading)
+                        {
+                            @* Gap already implied by new journal group after a long pause; optional thin marker omitted. *@
+                        }
+                        <tr id="@rowId"
+                            class="timeline-data-row@(string.IsNullOrEmpty(row.CustomerColour) ? null : " has-customer-colour")"
+                            data-row-key="@row.Key"
+                            data-row-time="@Model.FormatProfileTime(row.Timestamp)"
+                            data-row-journal="@(row.JournalEntryId ?? "")"
+                            data-row-journal-label="@row.JournalLabel"
+                            data-row-target-id="@(row.JournalTargetId ?? "")"
+                            data-row-target="@row.JournalTargetLabel"
+                            data-row-covering-journal="@(row.CoveringJournalId ?? "")"
+                            data-row-covering-label="@row.CoveringJournalLabel"
+                            data-row-machine="@row.MachineLabel"
+                            data-row-tags="@(row.Tags ?? "")"
+                            data-row-notes="@(row.Notes ?? "")"
+                            style="@(string.IsNullOrEmpty(row.CustomerColour) ? null : $"--row-customer-colour:{row.CustomerColour}")">
+                            <td id="@rowId-lead" class="col-lead" data-col="lead">
+                                <div class="row-lead">
+                                    <input type="checkbox"
+                                           id="@rowId-row-check"
+                                           class="row-select"
+                                           name="SelectedRowKeys"
+                                           value="@row.Key"
+                                           form="home-bulk-rows-form"
+                                           aria-label="Select row @Model.FormatProfileTime(row.Timestamp)" />
+                                    @{
+                                        var hasRowMeta = !string.IsNullOrWhiteSpace(row.Tags)
+                                            || !string.IsNullOrWhiteSpace(row.Notes);
+                                    }
+                                    <button type="button"
+                                            id="@rowId-edit"
+                                            class="icon-btn row-edit-btn@(hasRowMeta ? " has-content" : "")"
+                                            title="@(hasRowMeta ? "Edit row tags/notes (populated)" : "Edit row tags/notes")"
+                                            aria-label="Edit row @Model.FormatProfileTime(row.Timestamp)"
+                                            data-open-row-edit="@rowId">
+                                        <partial name="_Icon" model='"edit"' />
+                                    </button>
+                                </div>
+                            </td>
+                            <td id="@rowId-time" class="col-time" data-col="time" title="@Model.FormatProfileDateTime(row.Timestamp)">@Model.FormatProfileTime(row.Timestamp)</td>
+                            <td id="@rowId-machine" class="meta-cell" data-col="machine">@row.MachineLabel</td>
+                            @foreach (var col in Model.MonitorColumns)
+                            {
+                                var cellId = $"{rowId}-col-{col.Replace(' ', '-')}";
+                                var shotKey = "shot-" + col.Replace(' ', '-');
+                                <td id="@cellId" class="shot-cell" data-col="@shotKey">
+                                    @if (row.ShotsByColumn.TryGetValue(col, out var cellShots) && cellShots.Count > 0)
+                                    {
+                                        <div id="@cellId-stack" class="shot-stack">
+                                        @{
+                                            var shotIndex = 0;
+                                        }
+                                        @foreach (var shot in cellShots)
+                                        {
+                                            var sid = Schnapp.Contracts.Uuid7Text.Format(shot.Id);
+                                            var shotElId = $"{cellId}-shot-{shotIndex}";
+                                            var jid = shot.JournalEntryId is { } je ? Schnapp.Contracts.Uuid7Text.Format(je) : "";
+                                            var machine = Model.MachineLabel(shot.MachineId);
+                                            var machineId = Schnapp.Contracts.Uuid7Text.Format(shot.MachineId);
+                                            var when = Model.FormatProfileDateTime(shot.TimestampUtc);
+                                            var size = shot.Width is not null && shot.Height is not null
+                                                ? $"{shot.Width}x{shot.Height}"
+                                                : "";
+                                            var meta = $"{when} · {col} · {machine}";
+                                            var journalLabel = Model.JournalLabelFor(shot.JournalEntryId);
+                                            var coveringId = Model.CoveringJournalIdAt(shot.TimestampUtc);
+                                            var coveringLabel = Model.CoveringJournalLabelAt(shot.TimestampUtc);
+                                            <div id="@shotElId" class="shot-item">
+                                                <a id="@shotElId-link"
+                                                   href="/Screenshots/View/@sid?date=@Model.Date"
+                                                   data-shot-id="@sid"
+                                                   data-shot-date="@Model.Date"
+                                                   data-shot-notes="@(shot.Notes ?? "")"
+                                                   data-shot-tags="@(shot.Tags ?? "")"
+                                                   data-shot-journal="@jid"
+                                                   data-shot-journal-label="@(string.IsNullOrEmpty(journalLabel) ? "None" : journalLabel)"
+                                                   data-shot-covering-journal="@(coveringId ?? "")"
+                                                   data-shot-covering-label="@coveringLabel"
+                                                   data-shot-meta="@meta"
+                                                   data-shot-when="@when"
+                                                   data-shot-machine="@machine"
+                                                   data-shot-machine-id="@machineId"
+                                                   data-shot-monitor="@(shot.MonitorName ?? col)"
+                                                   data-shot-window="@(shot.WindowTitle ?? "")"
+                                                   data-shot-program="@(shot.ProgramName ?? "")"
+                                                   data-shot-size="@size"
+                                                   data-shot-type="@(shot.ContentType ?? "")"
+                                                   data-shot-tz="@Model.ProfileTimeZoneId"
+                                                   data-shot-received="@Model.FormatProfileDateTime(shot.ReceivedAtUtc)">
+                                                    <img id="@shotElId-thumb"
+                                                         class="shot-thumb"
+                                                         data-src="/Screenshots/Thumb/@sid"
+                                                         alt="@col"
+                                                         decoding="async"
+                                                         width="112"
+                                                         height="72" />
+                                                </a>
+                                                <label id="@shotElId-select-label" class="shot-select">
+                                                    <input id="@shotElId-select"
+                                                           class="shot-select-input"
+                                                           type="checkbox"
+                                                           name="SelectedIds"
+                                                           value="@sid"
+                                                           form="home-bulk-delete-form"
+                                                           aria-label="Select @col at @Model.FormatProfileTime(row.Timestamp)" />
+                                                </label>
+                                            </div>
+                                            shotIndex++;
+                                        }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span id="@cellId-empty" class="muted">—</span>
+                                    }
+                                </td>
+                            }
+                            <td id="@rowId-target" class="meta-cell" data-col="target" title="Explicit per-image journal link(s)">
+                                @row.JournalTargetLabel
+                                @if (row.MixedJournal)
+                                {
+                                    <span class="mixed-hint" title="Screenshots in this row have different linked journals">mixed</span>
+                                }
+                            </td>
+                            <td id="@rowId-tags" class="meta-cell" data-col="tags">
+                                @(row.Tags ?? "—")
+                                @if (row.MixedTags)
+                                {
+                                    <span class="mixed-hint" title="Screenshots in this row have different tags">mixed</span>
+                                }
+                            </td>
+                            <td id="@rowId-notes" class="meta-cell" data-col="notes">
+                                @(row.Notes ?? "—")
+                                @if (row.MixedNotes)
+                                {
+                                    <span class="mixed-hint" title="Screenshots in this row have different notes">mixed</span>
+                                }
+                            </td>
+                        </tr>
+                        rowIndex++;
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </form>
+
+        <form id="home-bulk-rows-form" method="post" asp-page-handler="BulkDeleteRows" data-disable-on-submit>
+            <input type="hidden" name="date" value="@Model.Date" />
+            <input type="hidden" name="monitor" value="@Model.MonitorFilter" />
+            <input type="hidden" name="Machine" value="@Model.MachineFilter" />
+            <input type="hidden" name="FromTime" value="@Model.FromTimeFilter" />
+            <input type="hidden" name="ToTime" value="@Model.ToTimeFilter" />
+            <input type="hidden" name="Journal" value="@Model.JournalFilter" />
+            <input type="hidden" name="TagsQ" value="@Model.TagsFilter" />
+            <input type="hidden" name="Customer" value="@Model.CustomerFilter" />
+            <input type="hidden" name="Project" value="@Model.ProjectFilter" />
+            <input type="hidden" name="Task" value="@Model.TaskFilter" />
+            <input type="hidden" name="GroupBy" value="@Model.GroupByNormalized" />
+            <input type="hidden" name="Sort" value="@Model.SortBy" />
+            <input type="hidden" name="Dir" value="@Model.SortDir" />
+        </form>
+    }
+</section>
+
+@if (Model.Machines.Count == 0)
+{
+    <p id="home-upload-no-machines" class="muted" style="margin-top:0.75rem">
+        Upload disabled — no machines linked.
+        An admin can register machines under <a id="home-upload-admin-machines-link" href="/Admin/Machines">Admin · Machines</a>.
+    </p>
+}
+else
+{
+    <dialog id="home-upload-dialog" class="form-dialog form-dialog-resizable">
+        <form id="home-upload-form" method="post" asp-page-handler="Upload" enctype="multipart/form-data"
+              data-disable-on-submit class="form-dialog-body">
+            <h2 id="home-upload-title">Manual upload</h2>
+            <input type="hidden" id="home-upload-date" name="date" value="@Model.Date" />
+            <input type="hidden" id="home-upload-filter-monitor" name="monitor" value="@Model.MonitorFilter" />
+            <input type="hidden" id="home-upload-filter-machine" name="Machine" value="@Model.MachineFilter" />
+            <input type="hidden" id="home-upload-filter-from" name="FromTime" value="@Model.FromTimeFilter" />
+            <input type="hidden" id="home-upload-filter-to" name="ToTime" value="@Model.ToTimeFilter" />
+            <input type="hidden" name="Journal" value="@Model.JournalFilter" />
+            <input type="hidden" name="TagsQ" value="@Model.TagsFilter" />
+            <input type="hidden" name="Customer" value="@Model.CustomerFilter" />
+            <input type="hidden" name="Project" value="@Model.ProjectFilter" />
+            <input type="hidden" name="Task" value="@Model.TaskFilter" />
+            <input type="hidden" name="GroupBy" value="@Model.GroupByNormalized" />
+            <div id="home-upload-row-machine-time" class="grid-2">
+                <div id="home-upload-machine-wrap">
+                    <label for="home-upload-machine" asp-for="MachineId">Machine</label>
+                    <select id="home-upload-machine" asp-for="MachineId">
+                        @foreach (var m in Model.Machines)
+                        {
+                            <option value="@Schnapp.Contracts.Uuid7Text.Format(m.Id)">@m.Name</option>
+                        }
+                    </select>
+                </div>
+                <div id="home-upload-capture-wrap">
+                    <label for="home-upload-capture" asp-for="CaptureLocal">Capture time (local)</label>
+                    <input id="home-upload-capture" asp-for="CaptureLocal" type="datetime-local" />
+                </div>
+            </div>
+            <div id="home-upload-row-tz-monitor" class="grid-2">
+                <div id="home-upload-timezone-wrap">
+                    <label for="home-upload-timezone" asp-for="ClientTimeZoneId">Timezone</label>
+                    <input id="home-upload-timezone" asp-for="ClientTimeZoneId" />
+                </div>
+                <div id="home-upload-monitor-wrap">
+                    <label for="home-upload-monitor" asp-for="MonitorName">Monitor label</label>
+                    <input id="home-upload-monitor" asp-for="MonitorName" placeholder="e.g. Monitor 0" />
+                </div>
+            </div>
+            <div id="home-upload-journal-wrap">
+                <label for="home-upload-journal" asp-for="JournalEntryId">Open journal (optional)</label>
+                <select id="home-upload-journal" asp-for="JournalEntryId">
+                    <option value="">— none —</option>
+                    @foreach (var j in Model.OpenJournals)
+                    {
+                        var label = Model.MachineNames.TryGetValue(j.MachineId, out var mn) ? mn : "machine";
+                        <option value="@Schnapp.Contracts.Uuid7Text.Format(j.Id)">@label — @j.Notes</option>
+                    }
+                </select>
+            </div>
+            <div id="home-upload-notes-wrap" class="field-stack field-notes">
+                <label for="home-upload-notes" asp-for="Notes">Notes</label>
+                <textarea id="home-upload-notes" asp-for="Notes" rows="3"></textarea>
+            </div>
+            <div id="home-upload-file-wrap">
+                <label for="home-upload-file" asp-for="UploadFile">Image file</label>
+                <input id="home-upload-file" asp-for="UploadFile" type="file" accept="image/*" />
+            </div>
+            <div id="home-upload-actions" class="form-dialog-actions">
+                <button id="home-upload-submit" type="submit" class="btn-with-icon">
+                    <partial name="_Icon" model='"plus"' /><span>Upload screenshot</span>
+                </button>
+                <button id="home-upload-cancel" type="button" class="btn-with-icon secondary" data-close-dialog>
+                    <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                </button>
+            </div>
+        </form>
+    </dialog>
+}
+
+@if (Model.Rows.Count > 0)
+{
+    <dialog id="home-row-edit-dialog" class="form-dialog form-dialog-resizable">
+        <form id="home-row-edit-form" method="post" asp-page-handler="SaveRow" data-disable-on-submit class="form-dialog-body">
+            <h2 id="home-row-edit-title">Edit row</h2>
+            <p id="home-row-edit-subtitle" class="muted" style="margin:0 0 0.5rem"></p>
+            <input type="hidden" name="date" value="@Model.Date" />
+            <input type="hidden" name="monitor" value="@Model.MonitorFilter" />
+            <input type="hidden" name="Machine" value="@Model.MachineFilter" />
+            <input type="hidden" name="FromTime" value="@Model.FromTimeFilter" />
+            <input type="hidden" name="ToTime" value="@Model.ToTimeFilter" />
+            <input type="hidden" name="Journal" value="@Model.JournalFilter" />
+            <input type="hidden" name="TagsQ" value="@Model.TagsFilter" />
+            <input type="hidden" name="Customer" value="@Model.CustomerFilter" />
+            <input type="hidden" name="Project" value="@Model.ProjectFilter" />
+            <input type="hidden" name="Task" value="@Model.TaskFilter" />
+            <input type="hidden" name="GroupBy" value="@Model.GroupByNormalized" />
+            <input type="hidden" name="Sort" value="@Model.SortBy" />
+            <input type="hidden" name="Dir" value="@Model.SortDir" />
+            <input type="hidden" id="home-row-edit-key" name="RowKey" />
+            <div class="field-stack">
+                <label for="home-row-edit-tags">Tags</label>
+                <input id="home-row-edit-tags" name="RowTags" data-tags-autocomplete autocomplete="off" />
+            </div>
+            <div class="field-stack field-notes">
+                <label for="home-row-edit-notes">Notes</label>
+                <textarea id="home-row-edit-notes" name="RowNotes" rows="3"></textarea>
+            </div>
+            <div class="form-dialog-footer">
+                <div class="form-dialog-actions">
+                    <button type="submit" class="btn-with-icon" id="home-row-edit-save">
+                        <partial name="_Icon" model='"save"' /><span>Save row</span>
+                    </button>
+                    <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                        <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                    </button>
+                </div>
+                <p id="home-row-edit-id" class="entity-id">Id: <code>—</code></p>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="home-bulk-edit-dialog" class="form-dialog form-dialog-resizable">
+        <form id="home-bulk-edit-form" method="post" asp-page-handler="BulkUpdateRows" data-disable-on-submit class="form-dialog-body">
+            <h2 id="home-bulk-edit-title">Edit selected rows</h2>
+            <p class="muted" style="margin:0 0 0.5rem">Applies to every screenshot in the selected rows. Only checked fields are written.</p>
+            <input type="hidden" name="date" value="@Model.Date" />
+            <input type="hidden" name="monitor" value="@Model.MonitorFilter" />
+            <input type="hidden" name="Machine" value="@Model.MachineFilter" />
+            <input type="hidden" name="FromTime" value="@Model.FromTimeFilter" />
+            <input type="hidden" name="ToTime" value="@Model.ToTimeFilter" />
+            <input type="hidden" name="Journal" value="@Model.JournalFilter" />
+            <input type="hidden" name="TagsQ" value="@Model.TagsFilter" />
+            <input type="hidden" name="Customer" value="@Model.CustomerFilter" />
+            <input type="hidden" name="Project" value="@Model.ProjectFilter" />
+            <input type="hidden" name="Task" value="@Model.TaskFilter" />
+            <input type="hidden" name="GroupBy" value="@Model.GroupByNormalized" />
+            <input type="hidden" name="Sort" value="@Model.SortBy" />
+            <input type="hidden" name="Dir" value="@Model.SortDir" />
+            <div id="home-bulk-edit-row-keys"></div>
+            <label class="inline-check" style="margin-top:0.75rem">
+                <input type="checkbox" id="home-bulk-set-journal" name="BulkSetJournal" value="true" />
+                <span>Set journal</span>
+            </label>
+            <select id="home-bulk-edit-journal" name="BulkJournalEntryId" disabled>
+                <option value="">— none —</option>
+                @foreach (var j in Model.JournalOptions)
+                {
+                    <option value="@j.Id">@j.Label</option>
+                }
+            </select>
+            <label class="inline-check" style="margin-top:0.75rem">
+                <input type="checkbox" id="home-bulk-set-tags" name="BulkSetTags" value="true" />
+                <span>Set tags</span>
+            </label>
+            <input id="home-bulk-edit-tags" name="BulkTags" data-tags-autocomplete autocomplete="off" disabled />
+            <label class="inline-check" style="margin-top:0.75rem">
+                <input type="checkbox" id="home-bulk-set-notes" name="BulkSetNotes" value="true" />
+                <span>Set notes</span>
+            </label>
+            <div class="field-stack field-notes">
+                <textarea id="home-bulk-edit-notes" name="BulkNotes" rows="3" disabled aria-label="Bulk notes"></textarea>
+            </div>
+            <div class="form-dialog-actions">
+                <button type="submit" class="btn-with-icon" id="home-bulk-edit-save">
+                    <partial name="_Icon" model='"save"' /><span>Apply</span>
+                </button>
+                <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                    <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                </button>
+            </div>
+        </form>
+    </dialog>
+}
+
+<dialog id="shot-viewer" class="viewer-dialog">
+    <div id="viewer-head" class="viewer-head">
+        <strong id="viewer-meta">Screenshot</strong>
+        <div id="viewer-nav" class="viewer-nav">
+            <button type="button" class="secondary small" id="viewer-prev" title="Previous image (←)">←</button>
+            <button type="button" class="secondary small" id="viewer-next" title="Next image (→)">→</button>
+            <button type="button" class="secondary small" id="viewer-batch-prev" title="Previous batch (↑)">↑</button>
+            <button type="button" class="secondary small" id="viewer-batch-next" title="Next batch (↓)">↓</button>
+            <button type="button" class="secondary small" id="viewer-batch-prev-10" title="Back 10 batches (Page Up)">⇈</button>
+            <button type="button" class="secondary small" id="viewer-batch-next-10" title="Forward 10 batches (Page Down)">⇊</button>
+            <button type="button" class="secondary small" id="viewer-zoom-out" title="Zoom out">-</button>
+            <button type="button" class="secondary small" id="viewer-zoom-reset" title="Reset zoom">1:1</button>
+            <button type="button" class="secondary small" id="viewer-zoom-in" title="Zoom in">+</button>
+            <a id="viewer-open-tab" class="btn secondary small btn-with-icon" href="#" target="_blank" rel="noopener"
+               title="Open full image in a new tab">
+                <partial name="_Icon" model='"external"' /><span>New tab</span>
+            </a>
+            <form id="viewer-close-form" method="dialog" class="inline-form">
+                <button type="submit" class="secondary small btn-with-icon" id="viewer-close" data-viewer-close>
+                    <partial name="_Icon" model='"close"' /><span>Close</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    <div id="viewer-body" class="viewer-body">
+        <div id="viewer-pan" class="viewer-image-wrap" title="Drag to pan when zoomed">
+            <img id="viewer-img" alt="screenshot" draggable="false" />
+        </div>
+        <aside id="viewer-side" class="viewer-side">
+            <dl id="viewer-details" class="viewer-readonly">
+                <div id="viewer-detail-when"><dt>Captured</dt><dd id="viewer-when">—</dd></div>
+                <div id="viewer-detail-machine"><dt>Machine</dt><dd id="viewer-machine">—</dd></div>
+                <div id="viewer-detail-monitor"><dt>Monitor</dt><dd id="viewer-monitor">—</dd></div>
+                <div id="viewer-detail-window"><dt>Window</dt><dd id="viewer-window">—</dd></div>
+                <div id="viewer-detail-program"><dt>Program</dt><dd id="viewer-program">—</dd></div>
+                <div id="viewer-detail-size"><dt>Size</dt><dd id="viewer-size">—</dd></div>
+                <div id="viewer-detail-type"><dt>Type</dt><dd id="viewer-type">—</dd></div>
+                <div id="viewer-detail-tz"><dt>Client TZ</dt><dd id="viewer-tz">—</dd></div>
+                <div id="viewer-detail-received"><dt>Received</dt><dd id="viewer-received">—</dd></div>
+            </dl>
+            <form id="viewer-edit-form" method="post" asp-page="/Index" data-disable-on-submit>
+                <input type="hidden" id="viewer-form-date" name="date" value="@Model.Date" />
+                <input type="hidden" id="viewer-form-monitor" name="monitor" value="@Model.MonitorFilter" />
+                <input type="hidden" id="viewer-form-machine" name="Machine" value="@Model.MachineFilter" />
+                <input type="hidden" id="viewer-form-from" name="FromTime" value="@Model.FromTimeFilter" />
+                <input type="hidden" id="viewer-form-to" name="ToTime" value="@Model.ToTimeFilter" />
+                <input type="hidden" name="Journal" value="@Model.JournalFilter" />
+                <input type="hidden" name="TagsQ" value="@Model.TagsFilter" />
+                <input type="hidden" name="Customer" value="@Model.CustomerFilter" />
+                <input type="hidden" name="Project" value="@Model.ProjectFilter" />
+                <input type="hidden" name="Task" value="@Model.TaskFilter" />
+                <input type="hidden" name="GroupBy" value="@Model.GroupByNormalized" />
+                <input type="hidden" id="viewer-date" name="ViewerDate" value="@Model.Date" />
+                <input type="hidden" id="viewer-id" name="ViewerId" />
+                <input type="hidden" id="viewer-machine-id" value="" />
+                <div class="field-stack viewer-journal-field">
+                    <div class="field-label-row">
+                        <label for="viewer-journal-label">Linked journal</label>
+                        <button type="button" id="viewer-edit-journal" class="btn-with-icon secondary small"
+                                title="Change this image's linked journal (None is allowed)">
+                            <partial name="_Icon" model='"edit"' /><span>Edit</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="viewer-journal" name="ViewerJournalEntryId" />
+                    <input type="text" id="viewer-journal-label" class="viewer-journal-readonly" readonly
+                           placeholder="None" tabindex="-1" />
+                    <p id="viewer-covering-hint" class="muted viewer-covering-hint" hidden></p>
+                </div>
+                <div class="viewer-tags-notes">
+                    <div class="field-stack">
+                        <label for="viewer-tags">Tags</label>
+                        <input id="viewer-tags" name="ViewerTags" data-tags-autocomplete autocomplete="off" />
+                    </div>
+                    <div class="field-stack field-notes">
+                        <label for="viewer-notes">Notes</label>
+                        <textarea id="viewer-notes" name="ViewerNotes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div id="viewer-actions" class="form-actions">
+                    <button id="viewer-save" type="submit" class="btn-with-icon"
+                            formaction="@Url.Page("/Index", "SaveViewer")">
+                        <partial name="_Icon" model='"save"' /><span>Save</span>
+                    </button>
+                    <button id="viewer-save-close" type="submit" class="btn-with-icon secondary"
+                            formaction="@Url.Page("/Index", "SaveViewerAndClose")">
+                        <partial name="_Icon" model='"save-close"' /><span>Save and close</span>
+                    </button>
+                    <button id="viewer-delete" type="submit" class="btn-with-icon danger"
+                            formaction="@Url.Page("/Index", "DeleteViewer")"
+                            formnovalidate
+                            data-confirm="Delete this screenshot? This cannot be undone.">
+                        <partial name="_Icon" model='"trash"' /><span>Delete</span>
+                    </button>
+                    <button id="viewer-close-side" type="submit" class="btn-with-icon secondary"
+                            formmethod="dialog" formnovalidate data-viewer-close>
+                        <partial name="_Icon" model='"close"' /><span>Close</span>
+                    </button>
+                </div>
+                <p id="viewer-hint" class="muted viewer-hint">← → image · ↑ ↓ batch · PgUp/PgDn ±10 batches · +/- zoom · drag to pan · Esc close</p>
+                <p id="viewer-shot-id" class="entity-id viewer-shot-id">Id: <code>—</code></p>
+            </form>
+        </aside>
+    </div>
+    <div id="viewer-resize-hint" class="viewer-resize-hint" aria-hidden="true"></div>
+</dialog>
+
+<partial name="_JournalEditor" model="Model.JournalEditors" />
+<partial name="_JournalTargetEditor" model="Model.JournalEditors" />

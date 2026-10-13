@@ -1,0 +1,32 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"sqltools.connections": [
+			{
+				"ssh": "Disabled",
+				"previewLimit": 50,
+				"server": "localhost",
+				"port": 5432,
+				"driver": "PostgreSQL",
+				"name": "localhost",
+				"database": "schnapp",
+				"username": "schnapp",
+				"password": "schnapp"
+			}
+		],
+		"search.followSymlinks": false,
+		"files.watcherInclude": [
+			"legacy/desktop",
+			"legacy/webapp",
+			"legacy/api"
+		],
+		"files.readonlyInclude": {
+			"legacy/**": true
+		},
+		"gitlens.advanced.resolveSymlinks": false
+	}
+}

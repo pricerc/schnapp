@@ -1,0 +1,336 @@
+#!/bin/sh
+# Apply appliance settings: data volume, optional blob NFS, Production config.
+# Usage: schnapp-configure [options]
+#
+# Important: parse --help before sourcing conf (a bad conf.d must not silence --help).
+set -u
+
+usage() {
+	cat <<'EOF'
+Usage: schnapp-configure [options]
+
+  --blob-nfs HOST:PATH   NFS export overmount onto blob dir (optional)
+  --blob-mount DIR       default /opt/schnapp/data/blobs
+  --db-password PASS     PostgreSQL password for role schnapp
+  --admin-email EMAIL    seed admin when DB has no users
+  --admin-password PASS  seed admin password
+  --api-bind ADDR        default 0.0.0.0
+  --web-bind ADDR        default 0.0.0.0
+  --api-port PORT        default 5080
+  --web-port PORT        default 80
+  --https-port PORT      default 443 (0 = disable HTTPS listener)
+  --no-https             HTTP only
+  --tls-cn NAME          CN for generated self-signed cert (default hostname)
+  --write-env            write /etc/schnapp/appliance.env from current values
+  --skip-data-volume     do not run schnapp-data-volume
+  -h, --help
+EOF
+}
+
+# Early help (no deps)
+for arg in "$@"; do
+	case "$arg" in
+		-h|--help) usage; exit 0 ;;
+	esac
+done
+
+set -e
+# shellcheck source=/usr/local/sbin/schnapp-lib.sh
+. /usr/local/sbin/schnapp-lib.sh
+
+schnapp_need_root
+schnapp_load_config
+
+WRITE_ENV=0
+SKIP_DATA_VOL=0
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-h|--help) usage; exit 0 ;;
+		--blob-nfs) BLOB_NFS="$2"; shift 2 ;;
+		--blob-mount) BLOB_MOUNTPOINT="$2"; shift 2 ;;
+		--db-password) DB_PASSWORD="$2"; shift 2 ;;
+		--admin-email) ADMIN_EMAIL="$2"; shift 2 ;;
+		--admin-password) ADMIN_PASSWORD="$2"; shift 2 ;;
+		--api-bind) API_BIND="$2"; shift 2 ;;
+		--web-bind) WEB_BIND="$2"; shift 2 ;;
+		--api-port) API_PORT="$2"; shift 2 ;;
+		--web-port) WEB_PORT="$2"; shift 2 ;;
+		--https-port) HTTPS_PORT="$2"; shift 2 ;;
+		--no-https) HTTPS_ENABLE=0; shift ;;
+		--tls-cn) TLS_CN="$2"; shift 2 ;;
+		--write-env) WRITE_ENV=1; shift ;;
+		--skip-data-volume) SKIP_DATA_VOL=1; shift ;;
+		*) schnapp_die "unknown option: $1" ;;
+	esac
+done
+
+PREFIX="${SCHNAPP_PREFIX:-/opt/schnapp}"
+BLOB_MOUNTPOINT="${BLOB_MOUNTPOINT:-/opt/schnapp/data/blobs}"
+BLOB_NFS_OPTS="${BLOB_NFS_OPTS:-rw,hard,timeo=100,retrans=2,_netdev}"
+BLOB_NFS_TYPE="${BLOB_NFS_TYPE:-nfs}"
+DATA_MOUNTPOINT="${DATA_MOUNTPOINT:-/opt/schnapp/data}"
+PGDATA="${PGDATA:-/opt/schnapp/data/postgresql}"
+BACKUP_DIR="${BACKUP_DIR:-/opt/schnapp/data/blobs/_appliance/db}"
+API_BIND="${API_BIND:-0.0.0.0}"
+WEB_BIND="${WEB_BIND:-0.0.0.0}"
+API_PORT="${API_PORT:-5080}"
+WEB_PORT="${WEB_PORT:-80}"
+HTTPS_PORT="${HTTPS_PORT:-443}"
+HTTPS_ENABLE="${HTTPS_ENABLE:-1}"
+TLS_DIR="${TLS_DIR:-/opt/schnapp/config/tls}"
+TLS_CERT="${TLS_CERT:-$TLS_DIR/cert.pem}"
+TLS_KEY="${TLS_KEY:-$TLS_DIR/key.pem}"
+TLS_CN="${TLS_CN:-${HOSTNAME:-schnapp}}"
+DB_NAME="${DB_NAME:-schnapp}"
+DB_USER="${DB_USER:-schnapp}"
+DB_PASSWORD="${DB_PASSWORD:-schnapp}"
+
+mkdir -p "$PREFIX/config" /etc/schnapp
+
+# --- second disk (required for PGDATA + local blobs) ---
+if [ "$SKIP_DATA_VOL" -eq 0 ]; then
+	if [ -x /usr/local/sbin/schnapp-data-volume ]; then
+		schnapp_log "ensuring data volume (second disk)…"
+		/usr/local/sbin/schnapp-data-volume || schnapp_die "schnapp-data-volume failed (is vdb attached?)"
+	else
+		schnapp_die "missing /usr/local/sbin/schnapp-data-volume"
+	fi
+fi
+
+mkdir -p "$BLOB_MOUNTPOINT"
+chown schnapp:schnapp "$BLOB_MOUNTPOINT" 2>/dev/null || true
+
+# --- optional NFS overmount for blobs ---
+if [ -n "${BLOB_NFS:-}" ]; then
+	case "$BLOB_NFS" in
+		*NFSv=*|*vers=*)
+			schnapp_log "warning: BLOB_NFS='$BLOB_NFS' looks wrong (version belongs in options)"
+			;;
+	esac
+
+	fstab_line="${BLOB_NFS} ${BLOB_MOUNTPOINT} ${BLOB_NFS_TYPE} ${BLOB_NFS_OPTS} 0 0"
+	if grep -q " ${BLOB_MOUNTPOINT} " /etc/fstab 2>/dev/null; then
+		tmp=$(mktemp)
+		grep -v " ${BLOB_MOUNTPOINT} " /etc/fstab >"$tmp" || true
+		echo "$fstab_line" >>"$tmp"
+		mv "$tmp" /etc/fstab
+	else
+		echo "$fstab_line" >>/etc/fstab
+	fi
+	schnapp_log "fstab blobs: $fstab_line"
+
+	rc-service rpcbind start 2>/dev/null || true
+	rc-update add rpcbind default 2>/dev/null || true
+
+	if mountpoint -q "$BLOB_MOUNTPOINT" 2>/dev/null || mount | grep -q " on ${BLOB_MOUNTPOINT} "; then
+		# If already a local dir on data disk, still try NFS overmount only if not nfs already
+		if mount | grep " on ${BLOB_MOUNTPOINT} " | grep -q nfs; then
+			schnapp_log "blobs already NFS-mounted"
+		else
+			schnapp_log "mounting NFS over ${BLOB_MOUNTPOINT}"
+			mount -t "$BLOB_NFS_TYPE" -o "$BLOB_NFS_OPTS" "$BLOB_NFS" "$BLOB_MOUNTPOINT" \
+				|| schnapp_log "warning: NFS mount failed — local ${BLOB_MOUNTPOINT} still available"
+		fi
+	else
+		mount -t "$BLOB_NFS_TYPE" -o "$BLOB_NFS_OPTS" "$BLOB_NFS" "$BLOB_MOUNTPOINT" \
+			|| mount "$BLOB_MOUNTPOINT" \
+			|| schnapp_log "warning: NFS mount failed"
+	fi
+else
+	schnapp_log "BLOB_NFS empty — using local ${BLOB_MOUNTPOINT} on data volume"
+fi
+
+mkdir -p "${BACKUP_DIR}"
+chown schnapp:schnapp "${BACKUP_DIR}" 2>/dev/null || true
+
+# --- API / Web Production config ---
+api_urls="http://${API_BIND}:${API_PORT}"
+web_urls="http://${WEB_BIND}:${WEB_PORT}"
+if [ "${HTTPS_ENABLE}" != "0" ] && [ "${HTTPS_PORT}" != "0" ]; then
+	if [ -x /usr/local/sbin/schnapp-ensure-tls ]; then
+		/usr/local/sbin/schnapp-ensure-tls --cn "$TLS_CN" || true
+	fi
+	web_urls="${web_urls};https://${WEB_BIND}:${HTTPS_PORT}"
+fi
+api_base="http://127.0.0.1:${API_PORT}"
+
+json_esc() {
+	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+conn="Host=127.0.0.1;Port=5432;Database=${DB_NAME};Username=${DB_USER};Password=${DB_PASSWORD}"
+blob_json=$(json_esc "$BLOB_MOUNTPOINT")
+conn_json=$(json_esc "$conn")
+cert_json=$(json_esc "$TLS_CERT")
+key_json=$(json_esc "$TLS_KEY")
+
+cat >"$PREFIX/config/api.appsettings.Production.json" <<EOF
+{
+  "ConnectionStrings": {
+    "Main": "${conn_json}"
+  },
+  "Schnapp": {
+    "BlobRoot": "${blob_json}",
+    "MigrateOnStartup": true
+  }
+}
+EOF
+
+# Web: HTTP :80 + optional HTTPS :443 (Kestrel cert paths for PEM)
+if [ "${HTTPS_ENABLE}" != "0" ] && [ "${HTTPS_PORT}" != "0" ] && [ -f "$TLS_CERT" ] && [ -f "$TLS_KEY" ]; then
+	cat >"$PREFIX/config/web.appsettings.Production.json" <<EOF
+{
+  "Schnapp": {
+    "ApiBaseUrl": "${api_base}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://${WEB_BIND}:${WEB_PORT}"
+      },
+      "Https": {
+        "Url": "https://${WEB_BIND}:${HTTPS_PORT}",
+        "Certificate": {
+          "Path": "${cert_json}",
+          "KeyPath": "${key_json}"
+        }
+      }
+    }
+  }
+}
+EOF
+else
+	cat >"$PREFIX/config/web.appsettings.Production.json" <<EOF
+{
+  "Schnapp": {
+    "ApiBaseUrl": "${api_base}"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://${WEB_BIND}:${WEB_PORT}"
+      }
+    }
+  }
+}
+EOF
+fi
+
+# Shell-sourceable env files MUST quote values that contain ';' (connection strings,
+# multi-URL ASPNETCORE_URLS). Unquoted "Host=...;Database=..." only sets Host= and
+# breaks DbUp with: connection string does not specify a database name.
+sh_quote() {
+	# single-quote for POSIX sh; embed ' as '\''
+	printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+{
+	echo "ASPNETCORE_ENVIRONMENT=Production"
+	echo "ASPNETCORE_URLS=$(sh_quote "$api_urls")"
+	echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0"
+	echo "Schnapp__BlobRoot=$(sh_quote "$BLOB_MOUNTPOINT")"
+	echo "ConnectionStrings__Main=$(sh_quote "$conn")"
+	if [ -n "${ADMIN_EMAIL:-}" ]; then
+		echo "Schnapp__AdminEmail=$(sh_quote "$ADMIN_EMAIL")"
+	fi
+	if [ -n "${ADMIN_PASSWORD:-}" ]; then
+		echo "Schnapp__AdminPassword=$(sh_quote "$ADMIN_PASSWORD")"
+	fi
+} >"$PREFIX/config/api.env"
+
+{
+	echo "ASPNETCORE_ENVIRONMENT=Production"
+	echo "ASPNETCORE_URLS=$(sh_quote "$web_urls")"
+	echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0"
+	echo "Schnapp__ApiBaseUrl=$(sh_quote "$api_base")"
+	if [ "${HTTPS_ENABLE}" != "0" ] && [ -f "$TLS_CERT" ] && [ -f "$TLS_KEY" ]; then
+		echo "ASPNETCORE_Kestrel__Certificates__Default__Path=$(sh_quote "$TLS_CERT")"
+		echo "ASPNETCORE_Kestrel__Certificates__Default__KeyPath=$(sh_quote "$TLS_KEY")"
+	fi
+} >"$PREFIX/config/web.env"
+
+for app in api web; do
+	if [ -d "$PREFIX/$app" ]; then
+		ln -sfn "$PREFIX/config/${app}.appsettings.Production.json" \
+			"$PREFIX/$app/appsettings.Production.json"
+	fi
+done
+
+# Port 80/443 require cap_net_bind_service when running as user schnapp
+if [ -x /opt/schnapp/web/Schnapp.Web ] && command -v setcap >/dev/null 2>&1; then
+	setcap 'cap_net_bind_service=+ep' /opt/schnapp/web/Schnapp.Web 2>/dev/null \
+		|| schnapp_log "warning: setcap failed — Web may not bind :${WEB_PORT}/:${HTTPS_PORT} as schnapp"
+fi
+
+chown -R schnapp:schnapp "$PREFIX/config" 2>/dev/null || true
+chmod 750 "$PREFIX/config" 2>/dev/null || true
+chmod 640 "$PREFIX/config"/* 2>/dev/null || true
+if [ -d "$TLS_DIR" ]; then
+	chown -R schnapp:schnapp "$TLS_DIR"
+	chmod 750 "$TLS_DIR"
+	chmod 640 "$TLS_CERT" "$TLS_KEY" 2>/dev/null || true
+fi
+
+if [ "$WRITE_ENV" -eq 1 ]; then
+	cat >/etc/schnapp/appliance.env <<EOF
+BLOB_NFS=${BLOB_NFS:-}
+BLOB_MOUNTPOINT=${BLOB_MOUNTPOINT}
+DATA_MOUNTPOINT=${DATA_MOUNTPOINT}
+PGDATA=${PGDATA}
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+API_BIND=${API_BIND}
+WEB_BIND=${WEB_BIND}
+API_PORT=${API_PORT}
+WEB_PORT=${WEB_PORT}
+HTTPS_ENABLE=${HTTPS_ENABLE}
+HTTPS_PORT=${HTTPS_PORT}
+TLS_CN=${TLS_CN}
+ADMIN_EMAIL=${ADMIN_EMAIL:-}
+ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+BACKUP_DIR=${BACKUP_DIR}
+EOF
+	chmod 600 /etc/schnapp/appliance.env
+	schnapp_log "wrote /etc/schnapp/appliance.env"
+fi
+
+cat >/etc/conf.d/schnapp-appliance <<EOF
+HOSTNAME="${HOSTNAME:-schnapp}"
+SCHNAPP_PREFIX="${PREFIX}"
+DATA_DISK_LABEL="${DATA_DISK_LABEL:-schnapp-data}"
+DATA_MOUNTPOINT="${DATA_MOUNTPOINT}"
+PGDATA="${PGDATA}"
+BLOB_MOUNTPOINT="${BLOB_MOUNTPOINT}"
+BLOB_NFS="${BLOB_NFS:-}"
+BLOB_NFS_OPTS="${BLOB_NFS_OPTS}"
+DB_NAME="${DB_NAME}"
+DB_USER="${DB_USER}"
+DB_PASSWORD="${DB_PASSWORD}"
+API_PORT="${API_PORT}"
+WEB_PORT="${WEB_PORT}"
+HTTPS_ENABLE="${HTTPS_ENABLE}"
+HTTPS_PORT="${HTTPS_PORT}"
+API_BIND="${API_BIND}"
+WEB_BIND="${WEB_BIND}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+BACKUP_DIR="${BACKUP_DIR}"
+EOF
+
+# Keep OpenRC postgres conf in sync
+for pgconf in /etc/conf.d/postgresql /etc/conf.d/postgresql16; do
+	if [ -d /etc/conf.d ]; then
+		echo "PGDATA=\"${PGDATA}\"" >"$pgconf"
+	fi
+done
+
+# Refresh pre-login banner (IP / ports / mounts)
+if [ -x /usr/local/sbin/schnapp-update-issue ]; then
+	/usr/local/sbin/schnapp-update-issue || true
+fi
+
+schnapp_log "config written under ${PREFIX}/config"
+schnapp_log "web listen: ${web_urls}"
+schnapp_log "data mount: $(mount | grep " on ${DATA_MOUNTPOINT} " || echo "NOT MOUNTED")"
+schnapp_log "restart: rc-service schnapp-api restart; rc-service schnapp-web restart"

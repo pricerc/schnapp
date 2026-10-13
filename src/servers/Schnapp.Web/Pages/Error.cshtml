@@ -1,0 +1,15 @@
+@page
+@model Schnapp.Web.Pages.ErrorModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<div class="card">
+    <h1>Something went wrong</h1>
+    <p class="muted">An unexpected error occurred. Try again, or return home.</p>
+    @if (!string.IsNullOrEmpty(Model.RequestId))
+    {
+        <p class="muted">Request id: <code>@Model.RequestId</code></p>
+    }
+    <p><a class="btn" href="/">Home</a></p>
+</div>

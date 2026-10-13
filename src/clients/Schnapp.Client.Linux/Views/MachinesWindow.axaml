@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:Schnapp.Client.Linux.Views"
+        x:Class="Schnapp.Client.Linux.Views.MachinesWindow"
+        Icon="/Assets/app-icon.ico"
+        Title="Schnapp — Machines"
+        Width="560" Height="480"
+        WindowStartupLocation="Manual">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Top" Spacing="8">
+      <TextBlock Text="Machines" FontSize="18" FontWeight="SemiBold"/>
+      <TextBlock x:Name="IdentityText" Opacity="0.75" TextWrapping="Wrap"/>
+      <TextBlock x:Name="DefaultText" Opacity="0.9" TextWrapping="Wrap"/>
+      <TextBlock x:Name="ErrorText" Foreground="#e06c75" TextWrapping="Wrap" IsVisible="False"/>
+      <TextBlock x:Name="StatusText" Opacity="0.8" TextWrapping="Wrap"/>
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="Refresh" Click="OnRefresh"/>
+        <Button Content="Register this PC" Click="OnRegister"/>
+        <Button Content="Find" Click="OnFind" ToolTip.Tip="Search for machines matching this PC (fingerprint / FQDN)"/>
+        <Button Content="Use" Click="OnUse" ToolTip.Tip="Use the selected machine for capture on this client"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Text="Register name:" VerticalAlignment="Center"/>
+        <TextBox x:Name="NameBox" Width="200" PlaceholderText="optional display name"/>
+        <Button Content="Close" HorizontalAlignment="Right" Click="OnClose"/>
+      </StackPanel>
+    </StackPanel>
+
+    <ListBox x:Name="MachineList" Margin="0,12,0,12">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="views:MachinesWindow+MachineRow">
+          <StackPanel Spacing="2" Margin="4">
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding Detail}" Opacity="0.7" FontSize="12"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
+</Window>

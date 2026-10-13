@@ -1,0 +1,37 @@
+@page
+@model Schnapp.Web.Pages.Account.StatusModel
+@{
+    ViewData["Title"] = "Status";
+}
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="flash error" role="alert">@Model.Error</div>
+}
+
+@if (Model.Profile is not null)
+{
+    <div class="card">
+        <h1>Session</h1>
+        <p class="muted">Signed in as <strong>@Model.Profile.Name</strong>
+            (<strong>@Model.Profile.Email</strong>) · @Model.Profile.Role</p>
+        <table>
+            <tr><th scope="row">Code</th><td>@Model.Profile.Code</td></tr>
+            <tr><th scope="row">Timezone</th><td>@Model.Profile.TimeZoneId</td></tr>
+        </table>
+        <p><a class="btn secondary" href="/Account/Profile">Edit profile</a></p>
+    </div>
+}
+
+<div class="card">
+    <h2>API health</h2>
+    @if (Model.Health is null)
+    {
+        <p class="error">Could not reach API health endpoint. Is Schnapp.Api running?</p>
+    }
+    else
+    {
+        <p>Status: <strong class="@(Model.Health.Status == "ok" ? "ok" : "error")">@Model.Health.Status</strong>
+            — database: @Model.Health.Database</p>
+    }
+</div>

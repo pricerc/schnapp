@@ -1,0 +1,33 @@
+#!/sbin/openrc-run
+# Schnapp Web BFF — long-running Kestrel process.
+
+name="schnapp-web"
+description="Schnapp Web"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+	need net
+	after schnapp-api
+	use dns
+}
+
+start_pre() {
+	checkpath -f -m 0644 -o schnapp:schnapp /var/log/schnapp-web.log /var/log/schnapp-web.err
+	checkpath -d -m 0755 -o schnapp:schnapp /opt/schnapp/web
+}
+
+start() {
+	ebegin "Starting ${name}"
+	start-stop-daemon --start --background --make-pidfile \
+		--pidfile "$pidfile" \
+		--user schnapp:schnapp \
+		--stdout /var/log/schnapp-web.log --stderr /var/log/schnapp-web.err \
+		--exec /bin/sh -- /opt/schnapp/web/run.sh
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping ${name}"
+	start-stop-daemon --stop --pidfile "$pidfile" 2>/dev/null || true
+	eend 0
+}

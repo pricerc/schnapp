@@ -1,0 +1,95 @@
+@page "/Admin/Users/{id}"
+@model Schnapp.Web.Pages.Admin.UserEditModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Schnapp.Domain
+@{
+    ViewData["Title"] = Model.Input.Name is { Length: > 0 } n ? $"User · {n}" : "Edit user";
+}
+
+<p class="muted"><a href="/Admin/Users">← Users</a></p>
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+@if (Model.IsAdmin && !string.IsNullOrEmpty(Model.UserId))
+{
+    <div class="card">
+        <h1>Edit user</h1>
+        <form method="post" asp-page-handler="Save" data-disable-on-submit>
+            <div class="entity-fields">
+                <div class="entity-col entity-col-left">
+                    <div class="field-row">
+                        <label asp-for="Input.Code">Code</label>
+                        <input asp-for="Input.Code" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Name">Name</label>
+                        <input asp-for="Input.Name" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Email">Email</label>
+                        <input asp-for="Input.Email" type="email" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Tags">Tags</label>
+                        <input asp-for="Input.Tags" />
+                    </div>
+                </div>
+                <div class="entity-col entity-col-right">
+                    <div class="field-row">
+                        <label asp-for="Input.Status">Status</label>
+                        <select asp-for="Input.Status">
+                            @foreach (var (value, label) in ListEntityStatus.All)
+                            {
+                                if (Model.Input.Status == value)
+                                {
+                                    <option value="@value" selected>@label</option>
+                                }
+                                else
+                                {
+                                    <option value="@value">@label</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.ColourCode">Colour</label>
+                        <div class="colour-field">
+                            <input type="color"
+                                   value="@(string.IsNullOrWhiteSpace(Model.Input.ColourCode) || Model.Input.ColourCode[0] != '#' ? "#5b9fd4" : Model.Input.ColourCode)"
+                                   aria-label="Colour swatch" />
+                            <input asp-for="Input.ColourCode" type="text" placeholder="#rrggbb or name" />
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Role">Role</label>
+                        <select asp-for="Input.Role">
+                            <option value="User">User</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.TimeZoneId">Timezone</label>
+                        <select asp-for="Input.TimeZoneId" asp-items="@(new SelectList(Model.TimeZoneOptions))"></select>
+                    </div>
+                </div>
+                <div class="field-row field-notes-row entity-notes-span">
+                    <label asp-for="Input.Notes">Notes</label>
+                    <textarea asp-for="Input.Notes" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="entity-footer">
+                <div class="form-actions">
+                    <button type="submit" class="btn-with-icon" formaction="?handler=Save">
+                        <partial name="_Icon" model='"save"' /><span>Save</span>
+                    </button>
+                    <button type="submit" class="btn-with-icon secondary" formaction="?handler=SaveAndClose">
+                        <partial name="_Icon" model='"save-close"' /><span>Save and close</span>
+                    </button>
+                    <a class="btn btn-with-icon secondary" href="/Admin/Users">
+                        <partial name="_Icon" model='"close"' /><span>Close</span>
+                    </a>
+                </div>
+                <p class="entity-id">Id: <code>@Model.UserId</code></p>
+            </div>
+        </form>
+    </div>
+}

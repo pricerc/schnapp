@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Schnapp.Client.Linux.Views.StatusDetailWindow"
+        Icon="/Assets/app-icon.ico"
+        Title="Schnapp status"
+        Width="420"
+        MinWidth="360"
+        SizeToContent="Height"
+        MinHeight="160"
+        WindowStartupLocation="CenterScreen"
+        CanResize="True">
+  <DockPanel Margin="20">
+    <Button DockPanel.Dock="Bottom"
+            Content="Close"
+            HorizontalAlignment="Right"
+            MinWidth="88"
+            Margin="0,16,0,0"
+            IsDefault="True"
+            IsCancel="True"
+            Click="OnClose"/>
+
+    <StackPanel Spacing="10">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Border x:Name="LevelDot"
+                Width="14" Height="14"
+                CornerRadius="7"
+                VerticalAlignment="Center"/>
+        <TextBlock x:Name="TitleText"
+                   FontSize="18"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center"/>
+      </StackPanel>
+      <TextBlock x:Name="TimeText" Opacity="0.65" FontSize="12"/>
+      <TextBlock x:Name="DetailText"
+                 TextWrapping="Wrap"
+                 LineHeight="20"/>
+    </StackPanel>
+  </DockPanel>
+</Window>

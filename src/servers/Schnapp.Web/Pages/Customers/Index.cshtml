@@ -1,0 +1,126 @@
+@page
+@using Schnapp.Domain
+@model Schnapp.Web.Pages.Customers.IndexModel
+@{
+    ViewData["Title"] = "Customers";
+    ViewData["Wide"] = true;
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+<div class="card">
+    <div class="page-head">
+        <h1>Customers</h1>
+        <div class="toolbar" style="margin:0">
+            <p class="muted" style="margin:0">Reference data · click Edit for projects and tasks</p>
+            <button type="button" class="btn-with-icon" data-open-dialog="create-customer-dialog">
+                <partial name="_Icon" model='"plus"' /><span>Add customer</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data-grid">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Tags</th>
+                    <th>Notes</th>
+                    @if (Model.IsAdmin) { <th>Id</th> }
+                    <th class="actions" title="Edit"><span class="sr-only">Edit</span></th>
+                    <th class="actions" title="Delete"><span class="sr-only">Delete</span></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var c in Model.Customers)
+            {
+                <tr>
+                    <td><code>@c.Code</code></td>
+                    <td>@c.Name</td>
+                    <td class="muted">@c.Tags</td>
+                    <td class="muted">@c.Notes</td>
+                    @if (Model.IsAdmin)
+                    {
+                        <td><code>@Schnapp.Contracts.Uuid7Text.Format(c.Id)</code></td>
+                    }
+                    <td class="actions">
+                        <a class="icon-btn" href="/Customers/@Uri.EscapeDataString(c.Code)" title="Edit @c.Name" aria-label="Edit @c.Name">
+                            <partial name="_Icon" model='"edit"' />
+                        </a>
+                    </td>
+                    <td class="actions">
+                        @if (c.Id != WellKnownIds.None)
+                        {
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@Schnapp.Contracts.Uuid7Text.Format(c.Id)" class="inline-form">
+                                <button type="submit" class="icon-btn danger" title="Delete @c.Code" aria-label="Delete @c.Code"
+                                        data-confirm="Delete customer @c.Code?">
+                                    <partial name="_Icon" model='"trash"' />
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Customers.Count == 0)
+            {
+                <tr><td colspan="6" class="muted">No customers yet. Use <strong>Add customer</strong>.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<dialog id="create-customer-dialog" class="form-dialog form-dialog-resizable">
+    <form method="post" asp-page-handler="Create" data-disable-on-submit class="form-dialog-body"
+          data-code-suggest data-code-existing="@Model.ExistingCodesJson">
+        <h2>Add customer</h2>
+        <div class="entity-fields">
+            <div class="entity-col entity-col-left">
+                <div class="field-row">
+                    <label asp-for="NewCustomer.Code">Code</label>
+                    <input asp-for="NewCustomer.Code" autocomplete="off" data-code-field
+                           placeholder="auto from name" title="Suggested from name as STEM### (e.g. MI001)" />
+                </div>
+                <div class="field-row">
+                    <label asp-for="NewCustomer.Name">Name</label>
+                    <input asp-for="NewCustomer.Name" data-name-field autofocus />
+                </div>
+                <div class="field-row">
+                    <label asp-for="NewCustomer.Tags">Tags</label>
+                    <input asp-for="NewCustomer.Tags" />
+                </div>
+            </div>
+            <div class="entity-col entity-col-right">
+                <div class="field-row">
+                    <label asp-for="NewCustomer.Status">Status</label>
+                    <select asp-for="NewCustomer.Status">
+                        @foreach (var (value, label) in Schnapp.Domain.ListEntityStatus.All)
+                        {
+                            <option value="@value">@label</option>
+                        }
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label asp-for="NewCustomer.ColourCode">Colour</label>
+                    <div class="colour-field">
+                        <input type="color" value="#5b9fd4" aria-label="Colour swatch" />
+                        <input asp-for="NewCustomer.ColourCode" type="text" placeholder="#rrggbb or name" />
+                    </div>
+                </div>
+            </div>
+            <div class="field-row field-notes-row entity-notes-span">
+                <label asp-for="NewCustomer.Notes">Notes</label>
+                <textarea asp-for="NewCustomer.Notes" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="form-dialog-actions">
+            <button type="submit" class="btn-with-icon">
+                <partial name="_Icon" model='"plus"' /><span>Create customer</span>
+            </button>
+            <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                <partial name="_Icon" model='"close"' /><span>Cancel</span>
+            </button>
+        </div>
+    </form>
+</dialog>

@@ -1,0 +1,11 @@
+# Refresh login banners when DHCP (or static) address is applied.
+# Installed by Schnapp appliance; dhcpcd sources this after interface events.
+# shellcheck shell=sh
+
+case "${reason:-}" in
+	BOUND|RENEW|REBIND|REBOOT|IPV4LL|STATIC|INFORM)
+		if [ -x /usr/local/sbin/schnapp-update-issue ]; then
+			/usr/local/sbin/schnapp-update-issue || true
+		fi
+		;;
+esac

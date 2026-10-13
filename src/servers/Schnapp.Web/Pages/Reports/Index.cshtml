@@ -1,0 +1,313 @@
+@page
+@model Schnapp.Web.Pages.Reports.IndexModel
+@{
+    ViewData["Title"] = "Reports";
+    ViewData["Wide"] = true;
+    var exportQs = "handler=Export&" + Model.FilterQuery(Model.FromDate, Model.ToDate);
+}
+
+<div class="card reports-page">
+    <div class="page-head">
+        <div>
+            <h1>Reports</h1>
+            <p class="muted" style="margin:0">
+                Time spent by day, machine, customer, project, and task · times in <strong>@Model.ProfileTimeZoneId</strong>.
+            </p>
+        </div>
+        <div class="page-head-actions">
+            @if (string.IsNullOrEmpty(Model.Error) && Model.Rows.Count > 0)
+            {
+                <a class="btn-with-icon" href="?@exportQs">
+                    <partial name="_Icon" model='"download"' /><span>Export CSV</span>
+                </a>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.Error))
+    {
+        <p class="error">@Model.Error</p>
+    }
+
+    <form method="get" class="report-controls">
+        <fieldset class="report-panel">
+            <legend class="report-panel-title">Filters</legend>
+            <div class="report-filter-toolbar">
+                <div class="report-quick-ranges">
+                    <span class="muted">Quick range:</span>
+                    @foreach (var q in Model.QuickRanges)
+                    {
+                        var active = q.FromText == Model.FromDate && q.ToText == Model.ToDate;
+                        <a class="report-quick-link@(active ? " active" : null)"
+                           href="?@Model.FilterQuery(q.FromText, q.ToText)">@q.Label</a>
+                    }
+                </div>
+                <button type="submit" class="report-apply-btn">Apply</button>
+            </div>
+            <p class="muted report-cpt-hint" style="margin:0">
+                Column headers: non-empty <strong>In</strong> / <strong>Ex</strong> values are applied (clear a field to disable it).
+            </p>
+        </fieldset>
+
+        <fieldset class="report-panel">
+            <legend class="report-panel-title">Group/Sort</legend>
+            <div class="day-filter-form report-filters">
+                <label>
+                    Group by
+                    <select name="GroupBy" aria-label="Group by">
+                        @foreach (var g in IndexModel.GroupByOptions)
+                        {
+                            if (g.Id == Model.GroupByNormalized)
+                            {
+                                <option value="@g.Id" selected>@g.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@g.Id">@g.Label</option>
+                            }
+                        }
+                    </select>
+                </label>
+                <label>
+                    Sort by
+                    <select name="SortBy" aria-label="Sort by">
+                        @foreach (var s in IndexModel.SortByOptions)
+                        {
+                            if (s.Id == Model.SortByNormalized)
+                            {
+                                <option value="@s.Id" selected>@s.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@s.Id">@s.Label</option>
+                            }
+                        }
+                    </select>
+                </label>
+                <label>
+                    Direction
+                    <select name="SortDir" aria-label="Sort direction">
+                        @if (Model.SortDirNormalized == "asc")
+                        {
+                            <option value="asc" selected>Ascending</option>
+                            <option value="desc">Descending</option>
+                        }
+                        else
+                        {
+                            <option value="asc">Ascending</option>
+                            <option value="desc" selected>Descending</option>
+                        }
+                    </select>
+                </label>
+            </div>
+        </fieldset>
+
+        <datalist id="report-customers">
+            @foreach (var c in Model.Customers)
+            {
+                <option value="@c.Label"></option>
+            }
+        </datalist>
+        <datalist id="report-projects">
+            @foreach (var p in Model.Projects)
+            {
+                <option value="@p.Label"></option>
+            }
+        </datalist>
+        <datalist id="report-tasks">
+            @foreach (var t in Model.Tasks)
+            {
+                <option value="@t.Label"></option>
+            }
+        </datalist>
+        <datalist id="report-machines">
+            @foreach (var m in Model.Machines)
+            {
+                <option value="@m.Label"></option>
+            }
+        </datalist>
+
+        @if (string.IsNullOrEmpty(Model.Error))
+        {
+            <p class="muted" style="margin:0.25rem 0 0">
+                Total: <strong>@Model.TotalDurationDisplay</strong>
+                (@Model.TotalSeconds.ToString("N0") seconds) · @Model.Rows.Count row(s)
+                @if (Model.GroupByNormalized != "none")
+                {
+                    <span>· grouped by <strong>@IndexModel.GroupByOptions.First(o => o.Id == Model.GroupByNormalized).Label</strong></span>
+                }
+            </p>
+        }
+
+        <div class="reports-grid-host" style="margin-top:0.75rem">
+        <div id="reports-scroll-top" class="table-scroll-top" aria-hidden="true">
+            <div id="reports-scroll-top-spacer"></div>
+        </div>
+        <div class="table-wrap" id="reports-grid-wrap">
+            <table class="data-grid reports-grid reports-grid-filter-headers" id="reports-grid">
+                <thead>
+                    <tr>
+                        <th class="report-col-filter" scope="col">
+                            <div class="report-th-title">Date</div>
+                            <div class="report-th-filters">
+                                <label class="report-th-line report-th-date" title="From date">
+                                    <span class="report-th-tag">From</span>
+                                    <input type="date" name="From" value="@Model.FromDate" required aria-label="From date" />
+                                </label>
+                                <label class="report-th-line report-th-date" title="To date">
+                                    <span class="report-th-tag">To</span>
+                                    <input type="date" name="To" value="@Model.ToDate" required aria-label="To date" />
+                                </label>
+                            </div>
+                        </th>
+                        <th class="report-col-filter" scope="col">
+                            <div class="report-th-title">Machine</div>
+                            <div class="report-th-filters">
+                                <label class="report-th-line report-th-include" title="Include machine (empty = no filter)">
+                                    <span class="report-th-tag">In</span>
+                                    <input type="text" name="IncMachine" value="@Model.IncMachine" list="report-machines"
+                                           placeholder="All…" autocomplete="off" aria-label="Include machine" />
+                                </label>
+                                <label class="report-th-line report-th-exclude" title="Exclude machine (empty = no filter)">
+                                    <span class="report-th-tag">Ex</span>
+                                    <input type="text" name="ExcMachine" value="@Model.ExcMachine" list="report-machines"
+                                           placeholder="Exclude…" autocomplete="off" aria-label="Exclude machine" />
+                                </label>
+                            </div>
+                        </th>
+                        <th class="report-col-filter" scope="col">
+                            <div class="report-th-title">Customer</div>
+                            <div class="report-th-filters">
+                                <label class="report-th-line report-th-include" title="Include customer (empty = no filter)">
+                                    <span class="report-th-tag">In</span>
+                                    <input type="text" name="IncCustomer" value="@Model.IncCustomer" list="report-customers"
+                                           placeholder="All…" autocomplete="off" aria-label="Include customer" />
+                                </label>
+                                <label class="report-th-line report-th-exclude" title="Exclude customer (empty = no filter)">
+                                    <span class="report-th-tag">Ex</span>
+                                    <input type="text" name="ExcCustomer" value="@Model.ExcCustomer" list="report-customers"
+                                           placeholder="(none)" autocomplete="off" aria-label="Exclude customer" />
+                                </label>
+                            </div>
+                        </th>
+                        <th class="report-col-filter" scope="col">
+                            <div class="report-th-title">Project</div>
+                            <div class="report-th-filters">
+                                <label class="report-th-line report-th-include" title="Include project (empty = no filter)">
+                                    <span class="report-th-tag">In</span>
+                                    <input type="text" name="IncProject" value="@Model.IncProject" list="report-projects"
+                                           placeholder="All…" autocomplete="off" aria-label="Include project" />
+                                </label>
+                                <label class="report-th-line report-th-exclude" title="Exclude project (empty = no filter)">
+                                    <span class="report-th-tag">Ex</span>
+                                    <input type="text" name="ExcProject" value="@Model.ExcProject" list="report-projects"
+                                           placeholder="Exclude…" autocomplete="off" aria-label="Exclude project" />
+                                </label>
+                            </div>
+                        </th>
+                        <th class="report-col-filter" scope="col">
+                            <div class="report-th-title">Task</div>
+                            <div class="report-th-filters">
+                                <label class="report-th-line report-th-include" title="Include task (empty = no filter)">
+                                    <span class="report-th-tag">In</span>
+                                    <input type="text" name="IncTask" value="@Model.IncTask" list="report-tasks"
+                                           placeholder="All…" autocomplete="off" aria-label="Include task" />
+                                </label>
+                                <label class="report-th-line report-th-exclude" title="Exclude task (empty = no filter)">
+                                    <span class="report-th-tag">Ex</span>
+                                    <input type="text" name="ExcTask" value="@Model.ExcTask" list="report-tasks"
+                                           placeholder="Exclude…" autocomplete="off" aria-label="Exclude task" />
+                                </label>
+                            </div>
+                        </th>
+                        <th class="num">Duration</th>
+                        <th class="num">Entries</th>
+                        <th>First screenshot</th>
+                        <th>Last screenshot</th>
+                        <th class="num" title="Time between first and last screenshot">Shot span</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Rows.Count == 0 && string.IsNullOrEmpty(Model.Error))
+                {
+                    <tr>
+                        <td colspan="10" class="empty-state" style="padding:1.25rem">
+                            <strong>No journal time in this range</strong><br />
+                            <span class="muted">Adjust the date or column filters, then Apply.</span>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var grp in Model.Sections)
+                    {
+                        if (grp.ShowHeader)
+                        {
+                            <tr class="report-group-header">
+                                <td colspan="10">
+                                    <strong>@grp.HeaderLabel</strong>
+                                    <span class="muted"> · @grp.Rows.Count row(s)</span>
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var row in grp.Rows)
+                        {
+                            <tr>
+                                <td>@row.LocalDate</td>
+                                <td title="@row.MachineCode">@row.MachineLabel</td>
+                                <td title="@row.CustomerCode">@row.CustomerLabel</td>
+                                <td title="@row.ProjectCode">@row.ProjectLabel</td>
+                                <td title="@row.TaskCode">@row.TaskLabel</td>
+                                <td class="num" title="@row.TotalSeconds s">@row.DurationDisplay</td>
+                                <td class="num">@row.EntryCount</td>
+                                <td class="muted" title="@(row.FirstScreenshotUtc is null ? null : row.FirstScreenshotUtc + " UTC")">
+                                    @(row.FirstScreenshotLocal ?? "—")
+                                </td>
+                                <td class="muted" title="@(row.LastScreenshotUtc is null ? null : row.LastScreenshotUtc + " UTC")">
+                                    @(row.LastScreenshotLocal ?? "—")
+                                </td>
+                                <td class="num muted" title="@(row.ScreenshotSpanSeconds is null ? null : row.ScreenshotSpanSeconds + " s")">
+                                    @(row.ScreenshotSpanDisplay ?? "—")
+                                </td>
+                            </tr>
+                        }
+                        if (grp.ShowSubtotal)
+                        {
+                            <tr class="report-group-subtotal">
+                                <td colspan="5" style="text-align:right">
+                                    Subtotal@(grp.HeaderLabel is null ? null : ": " + grp.HeaderLabel)
+                                </td>
+                                <td class="num" title="@grp.SubtotalSeconds s">@grp.SubtotalDurationDisplay</td>
+                                <td class="num">@grp.SubtotalEntryCount</td>
+                                <td class="muted" title="@(grp.FirstScreenshotUtc is null ? null : grp.FirstScreenshotUtc + " UTC")">
+                                    @(grp.FirstScreenshotLocal ?? "—")
+                                </td>
+                                <td class="muted" title="@(grp.LastScreenshotUtc is null ? null : grp.LastScreenshotUtc + " UTC")">
+                                    @(grp.LastScreenshotLocal ?? "—")
+                                </td>
+                                <td class="num muted" title="@(grp.ScreenshotSpanSeconds is null ? null : grp.ScreenshotSpanSeconds + " s")">
+                                    @(grp.ScreenshotSpanDisplay ?? "—")
+                                </td>
+                            </tr>
+                        }
+                    }
+                }
+                </tbody>
+                @if (Model.Rows.Count > 0)
+                {
+                    <tfoot>
+                        <tr>
+                            <th colspan="5" style="text-align:right">Total</th>
+                            <th class="num">@Model.TotalDurationDisplay</th>
+                            <th class="num">@Model.TotalEntryCount</th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                }
+            </table>
+        </div>
+        </div>
+    </form>
+</div>

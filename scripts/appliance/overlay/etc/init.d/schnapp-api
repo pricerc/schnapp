@@ -1,0 +1,38 @@
+#!/sbin/openrc-run
+# Schnapp API — long-running Kestrel process.
+
+name="schnapp-api"
+description="Schnapp API"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+	need net
+	after schnapp-data-volume postgresql postgresql16 schnapp-firstboot
+	use dns
+}
+
+start_pre() {
+	checkpath -f -m 0644 -o schnapp:schnapp /var/log/schnapp-api.log /var/log/schnapp-api.err
+	checkpath -d -m 0755 -o schnapp:schnapp /opt/schnapp/api
+	if [ ! -x /opt/schnapp/api/Schnapp.Api ] && [ ! -f /opt/schnapp/api/Schnapp.Api.dll ]; then
+		eerror "Schnapp.Api binary/dll not found under /opt/schnapp/api"
+		return 1
+	fi
+}
+
+start() {
+	ebegin "Starting ${name}"
+	# Wrapper sources api.env (quoted values) so ConnectionStrings survive ';'
+	start-stop-daemon --start --background --make-pidfile \
+		--pidfile "$pidfile" \
+		--user schnapp:schnapp \
+		--stdout /var/log/schnapp-api.log --stderr /var/log/schnapp-api.err \
+		--exec /bin/sh -- /opt/schnapp/api/run.sh
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping ${name}"
+	start-stop-daemon --stop --pidfile "$pidfile" 2>/dev/null || true
+	eend 0
+}

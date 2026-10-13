@@ -1,0 +1,23 @@
+[Unit]
+Description=Schnapp API
+After=network.target postgresql.service firebird-superserver.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=schnapp
+Group=schnapp
+WorkingDirectory=/opt/schnapp/api
+EnvironmentFile=-/opt/schnapp/config/api.env
+# Framework-dependent (dnf install aspnetcore-runtime-10.0):
+ExecStart=/usr/bin/dotnet /opt/schnapp/api/Schnapp.Api.dll
+# Self-contained publish — comment ExecStart above and use:
+# ExecStart=/opt/schnapp/api/Schnapp.Api
+Restart=on-failure
+RestartSec=5
+# Hardening (optional)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

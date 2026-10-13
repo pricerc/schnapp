@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Schnapp.Client.Linux.Controls"
+        x:Class="Schnapp.Client.Linux.Views.TextPromptWindow"
+        Width="360"
+        MinWidth="280"
+        MinHeight="140"
+        SizeToContent="Height"
+        CanResize="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual">
+  <!-- Full decorations (title bar) so the user can drag the prompt; BorderOnly made it unmovable. -->
+  <StackPanel Margin="12" Spacing="8">
+    <TextBlock x:Name="PromptText" TextWrapping="Wrap"/>
+    <TextBox x:Name="InputBox" MaxLength="500" IsVisible="True"
+             MinHeight="28" AcceptsReturn="False"/>
+    <controls:TagsInput x:Name="TagsInput" MaxLength="500" IsVisible="False"
+                        MinHeight="28"/>
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <Button Grid.Column="1" Content="Cancel" MinWidth="72" Margin="0,0,6,0"
+              IsCancel="True" Click="OnCancel"/>
+      <Button Grid.Column="2" Content="OK" MinWidth="72"
+              IsDefault="True" Click="OnOk"/>
+    </Grid>
+  </StackPanel>
+</Window>

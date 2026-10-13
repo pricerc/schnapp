@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>Schnapp.Client.Linux</RootNamespace>
+    <AssemblyName>schnapp-client-linux</AssemblyName>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
+    <Platforms>x64</Platforms>
+		<Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Version>
+		<AssemblyVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HH"))</AssemblyVersion>
+		<AssemblyFileVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyFileVersion>
+		<AssemblyInformationalVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyInformationalVersion>
+    </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Schnapp.Client.Core\Schnapp.Client.Core.csproj" />
+    <ProjectReference Include="..\..\common\Schnapp.Imaging\Schnapp.Imaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="4.1.1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,113 @@
+@page "{id}"
+@model Schnapp.Web.Pages.Journals.EditModel
+@using Schnapp.Contracts
+@{
+    ViewData["Title"] = "Edit journal";
+}
+
+<p class="muted"><a href="/Journals">← Journals</a></p>
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+<div class="card" id="journal-full-editor" data-journal-edit-page>
+    <div class="page-head">
+        <div>
+            <h1>Edit journal</h1>
+            <p class="muted" style="margin:0">
+                Machine: <strong>@Model.MachineLabel</strong>
+                @if (Model.IsOpen)
+                {
+                    <span class="mixed-hint" title="Still open">open</span>
+                }
+                · times in <strong>@Model.ProfileTimeZoneId</strong>
+            </p>
+        </div>
+    </div>
+
+    <form method="post" data-disable-on-submit>
+        <div class="entity-fields">
+            <div class="entity-col entity-col-left">
+                <div class="field-row">
+                    <label for="StartLocal">Started</label>
+                    <input id="StartLocal" name="StartLocal" type="datetime-local" step="1" value="@Model.StartLocal" required />
+                </div>
+                <div class="field-row">
+                    <label for="StopLocal">Finished</label>
+                    <input id="StopLocal" name="StopLocal" type="datetime-local" step="1" value="@Model.StopLocal"
+                           title="Leave empty while open" />
+                </div>
+                <div class="field-row">
+                    <label for="CustomerId">Customer</label>
+                    <select id="CustomerId" name="CustomerId" data-journal-cascade="customer" class="journal-edit-select">
+                        @foreach (var c in Model.Customers)
+                        {
+                            if (c.Id == Model.CustomerId)
+                            {
+                                <option value="@c.Id" selected data-none="@(c.IsNone ? "1" : null)">@c.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@c.Id" data-none="@(c.IsNone ? "1" : null)">@c.Label</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label for="ProjectId">Project</label>
+                    <select id="ProjectId" name="ProjectId" data-journal-cascade="project" class="journal-edit-select">
+                        @foreach (var p in Model.Projects)
+                        {
+                            if (p.Id == Model.ProjectId)
+                            {
+                                <option value="@p.Id" selected data-parent="@p.ParentId" data-none="@(p.IsNone ? "1" : null)">@p.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@p.Id" data-parent="@p.ParentId" data-none="@(p.IsNone ? "1" : null)">@p.Label</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label for="TaskId">Task</label>
+                    <select id="TaskId" name="TaskId" data-journal-cascade="task" class="journal-edit-select">
+                        @foreach (var t in Model.Tasks)
+                        {
+                            if (t.Id == Model.TaskId)
+                            {
+                                <option value="@t.Id" selected data-parent="@t.ParentId" data-none="@(t.IsNone ? "1" : null)">@t.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@t.Id" data-parent="@t.ParentId" data-none="@(t.IsNone ? "1" : null)">@t.Label</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label for="Tags">Tags</label>
+                    <input id="Tags" name="Tags" value="@Model.Tags" />
+                </div>
+            </div>
+            <div class="entity-col entity-col-right">
+                <div class="field-stack field-notes">
+                    <label for="Notes">Notes</label>
+                    <textarea id="Notes" name="Notes" rows="8">@Model.Notes</textarea>
+                </div>
+            </div>
+        </div>
+        <div class="entity-footer">
+            <div class="form-actions">
+                <button type="submit" class="btn-with-icon" formaction="?handler=Save">
+                    <partial name="_Icon" model='"save"' /><span>Save</span>
+                </button>
+                <button type="submit" class="btn-with-icon secondary" formaction="?handler=SaveAndClose">
+                    <partial name="_Icon" model='"save-close"' /><span>Save and close</span>
+                </button>
+                <a class="btn btn-with-icon secondary" href="/Journals">
+                    <partial name="_Icon" model='"close"' /><span>Close</span>
+                </a>
+            </div>
+            <p class="entity-id">Id: <code>@Model.JournalId</code></p>
+        </div>
+    </form>
+</div>

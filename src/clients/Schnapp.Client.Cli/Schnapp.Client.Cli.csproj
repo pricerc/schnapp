@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Schnapp.Cli</RootNamespace>
+    <AssemblyName>schnapp</AssemblyName>
+    <Platforms>x64</Platforms>
+    <Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Version>
+    <AssemblyVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HH"))</AssemblyVersion>
+    <AssemblyFileVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyFileVersion>
+    <AssemblyInformationalVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyInformationalVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Schnapp.Client.Core\Schnapp.Client.Core.csproj" />
+  </ItemGroup>
+</Project>

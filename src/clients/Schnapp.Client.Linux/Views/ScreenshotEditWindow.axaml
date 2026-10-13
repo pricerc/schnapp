@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Schnapp.Client.Linux.Controls"
+        x:Class="Schnapp.Client.Linux.Views.ScreenshotEditWindow"
+        Icon="/Assets/app-icon.ico"
+        Title="Schnapp — Edit screenshots"
+        Width="320" Height="460"
+        MinWidth="280" MinHeight="380"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <Border DockPanel.Dock="Bottom" Background="#1a2332" Padding="6,4">
+      <TextBlock x:Name="StatusBar" FontSize="11" Opacity="0.85" TextWrapping="Wrap"
+                 Text="Ready"/>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Padding="8" Background="#121820">
+      <StackPanel Orientation="Horizontal" Spacing="4">
+        <Button x:Name="RefreshBtn" Content="↻" Width="36" Height="32"
+                ToolTip.Tip="Refresh lists from server" Click="OnRefresh"/>
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer>
+      <StackPanel Margin="10" Spacing="8">
+        <Border Background="#1e3a5f" CornerRadius="6" Padding="10">
+          <StackPanel Spacing="4">
+            <TextBlock x:Name="ActiveTargetText" FontSize="15" FontWeight="SemiBold"
+                       Text="Editing screenshots" TextWrapping="Wrap"/>
+            <TextBlock x:Name="ActiveTimeText" FontSize="12" Opacity="0.9"
+                       Text="Apply updates journal link, notes, and tags." TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <ComboBox x:Name="MruBox" HorizontalAlignment="Stretch"
+                  PlaceholderText="Pick a recent target…"
+                  SelectionChanged="OnMruSelected"/>
+
+        <Separator/>
+
+        <ComboBox x:Name="CustomerBox" HorizontalAlignment="Stretch"
+                  IsEditable="True" PlaceholderText="Type or select customer…"/>
+
+        <ComboBox x:Name="ProjectBox" HorizontalAlignment="Stretch"
+                  IsEditable="True" PlaceholderText="Type or select project…"/>
+
+        <ComboBox x:Name="TaskBox" HorizontalAlignment="Stretch"
+                  IsEditable="True" PlaceholderText="Type or select task…"/>
+
+        <controls:TagsInput x:Name="TagsBox"
+                            PlaceholderText="Tags - e.g. billing, meeting, research…"
+                            MaxLength="500"/>
+
+        <TextBox x:Name="NotesBox" AcceptsReturn="True" TextWrapping="Wrap"
+                 MinHeight="72" MaxLength="500" VerticalAlignment="Stretch"
+                 PlaceholderText="Optional notes for these screenshots…"/>
+
+        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
+          <Button Grid.Column="0" Content="Apply" Click="OnApply"
+                  HorizontalAlignment="Stretch" Margin="0,0,6,0"
+                  HorizontalContentAlignment="Center"
+                  ToolTip.Tip="Save customer/project/task, notes, and tags on the selected screenshots"/>
+          <Button Grid.Column="1" Content="Clear" Click="OnClear" MinWidth="72" Margin="0,0,6,0"
+                  HorizontalContentAlignment="Center"
+                  ToolTip.Tip="Clear journal link, notes, and tags on the selected screenshots"/>
+          <Button Grid.Column="2" Content="Close" Click="OnClose" MinWidth="72"
+                  HorizontalContentAlignment="Center" IsCancel="True"/>
+        </Grid>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Platforms>x64</Platforms>
+		<Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Version>
+		<AssemblyVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HH"))</AssemblyVersion>
+		<AssemblyFileVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyFileVersion>
+		<AssemblyInformationalVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyInformationalVersion>
+    </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Medo.Uuid7" Version="3.2.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" Version="10.0.11" />
+  </ItemGroup>
+</Project>

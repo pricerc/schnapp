@@ -1,0 +1,27 @@
+#!/bin/sh
+# Quick diagnostics for the appliance guest.
+set -eu
+# shellcheck source=/usr/local/sbin/schnapp-lib.sh
+. /usr/local/sbin/schnapp-lib.sh 2>/dev/null || true
+
+echo "=== host ==="
+hostname 2>/dev/null || true
+cat /etc/hostname 2>/dev/null || true
+echo "=== disks ==="
+lsblk 2>/dev/null || true
+echo "=== blkid ==="
+blkid 2>/dev/null || true
+echo "=== mounts (schnapp) ==="
+mount | grep -E 'schnapp|/opt/|blobs|postgres' || echo "(none)"
+echo "=== fstab ==="
+grep -E 'schnapp|blobs|LABEL=' /etc/fstab 2>/dev/null || cat /etc/fstab 2>/dev/null || true
+echo "=== paths ==="
+ls -la /opt/schnapp 2>/dev/null || true
+ls -la /opt/schnapp/data 2>/dev/null || true
+ls -la /usr/local/sbin/schnapp-* 2>/dev/null || true
+echo "=== services ==="
+rc-status 2>/dev/null | grep -E 'schnapp|postgres|samba|nfs' || true
+echo "=== conf ==="
+cat /etc/conf.d/schnapp-appliance 2>/dev/null || echo "(no conf.d)"
+echo "PGDATA conf:"
+cat /etc/conf.d/postgresql 2>/dev/null; cat /etc/conf.d/postgresql16 2>/dev/null || true

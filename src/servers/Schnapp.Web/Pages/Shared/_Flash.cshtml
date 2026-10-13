@@ -1,0 +1,9 @@
+@model (string? Message, string? Error)
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div class="flash ok" role="status">@Model.Message</div>
+}
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="flash error" role="alert">@Model.Error</div>
+}

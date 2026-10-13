@@ -1,0 +1,22 @@
+[Unit]
+Description=Schnapp Web (Razor BFF)
+After=network.target schnapp-api.service
+Wants=schnapp-api.service
+
+[Service]
+Type=simple
+User=schnapp
+Group=schnapp
+WorkingDirectory=/opt/schnapp/web
+EnvironmentFile=-/opt/schnapp/config/web.env
+# Framework-dependent:
+ExecStart=/usr/bin/dotnet /opt/schnapp/web/Schnapp.Web.dll
+# Self-contained:
+# ExecStart=/opt/schnapp/web/Schnapp.Web
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

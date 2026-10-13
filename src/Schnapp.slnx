@@ -1,0 +1,56 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="common/Schnapp.Contracts/Schnapp.Contracts.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="common/Schnapp.Imaging/Schnapp.Imaging.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="common/Schnapp.ScreenshotEncode/Schnapp.ScreenshotEncode.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="servers/Schnapp.Api/Schnapp.Api.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="servers/Schnapp.Data/Schnapp.Data.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="servers/Schnapp.Domain/Schnapp.Domain.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="servers/Schnapp.Web/Schnapp.Web.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="clients/Schnapp.Client.Cli/Schnapp.Client.Cli.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="clients/Schnapp.Client.Core/Schnapp.Client.Core.csproj" >
+    <Platform Project="x64" />
+  </Project>  
+  <Project Path="clients/Schnapp.Client.Linux/Schnapp.Client.Linux.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="clients/Schnapp.Client.Windows/Schnapp.Client.Windows.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="clients/Schnapp.Utils/Schnapp.Utils.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="../tests/Schnapp.Api.Tests/Schnapp.Api.Tests.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="../tests/Schnapp.Client.Core.Tests/Schnapp.Client.Core.Tests.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="../tests/Schnapp.Data.Tests/Schnapp.Data.Tests.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="../tests/Schnapp.Domain.Tests/Schnapp.Domain.Tests.csproj" >
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="../tests/Schnapp.Imaging.Tests/Schnapp.Imaging.Tests.csproj" >
+    <Platform Project="x64" />
+  </Project>
+</Solution>

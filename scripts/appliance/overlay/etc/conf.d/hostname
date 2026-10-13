@@ -1,0 +1,2 @@
+# OpenRC hostname service (Alpine). Keep in sync with /etc/hostname.
+hostname="schnapp"

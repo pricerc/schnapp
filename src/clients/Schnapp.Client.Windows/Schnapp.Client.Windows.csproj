@@ -1,0 +1,93 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Schnapp.Client.Windows</RootNamespace>
+    <AssemblyName>schnapp-client-windows</AssemblyName>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Allow restore/build of Windows TFM from non-Windows hosts (design surface still needs VS on Windows). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+    <!-- SQLitePCL / e_sqlite3 native package rejects AnyCPU; prefer x64 for modern Windows. -->
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <StartupObject>Schnapp.Client.Windows.Program</StartupObject>
+    <AssemblyTitle>Schnapp Client for Windows</AssemblyTitle>
+    <Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Version>
+    <AssemblyVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HH"))</AssemblyVersion>
+    <AssemblyFileVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyFileVersion>
+    <AssemblyInformationalVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyInformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Schnapp.Client.Core\Schnapp.Client.Core.csproj" />
+    <ProjectReference Include="..\..\common\Schnapp.Imaging\Schnapp.Imaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Assets\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- WebP: Imazen.WebP NuGet + win-x64 native runtime (x64 only; matches PlatformTarget). -->
+    <PackageReference Include="Imazen.WebP" Version="11.0.0" />
+    <PackageReference Include="Imazen.WebP.NativeRuntime.win-x64" Version="1.6.1" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <!-- Menu/tray icons are loaded from Assets\ at runtime (MenuIcons / LoadTrayIcons). -->
+
+  <!--
+    Native package targets copy under runtimes/win-x64/native; also flatten next to the exe
+    so xcopy/publish layouts load natives reliably.
+  -->
+  <Target Name="CopyWebPNativesFlat" AfterTargets="Build">
+    <PropertyGroup>
+      <_WebPNativeDir>$(PkgImazen_WebP_NativeRuntime_win_x64)\runtimes\win-x64\native\</_WebPNativeDir>
+    </PropertyGroup>
+    <ItemGroup Condition="Exists('$(_WebPNativeDir)')">
+      <_WebPNativeFiles Include="$(_WebPNativeDir)*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WebPNativeFiles)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_WebPNativeFiles)' != ''" />
+  </Target>
+
+  <Target Name="CopyWebPNativesFlatPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_WebPNativeDir>$(PkgImazen_WebP_NativeRuntime_win_x64)\runtimes\win-x64\native\</_WebPNativeDir>
+    </PropertyGroup>
+    <ItemGroup Condition="Exists('$(_WebPNativeDir)')">
+      <_WebPNativeFiles Include="$(_WebPNativeDir)*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_WebPNativeFiles)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_WebPNativeFiles)' != '' And '$(PublishDir)' != ''" />
+  </Target>
+</Project>

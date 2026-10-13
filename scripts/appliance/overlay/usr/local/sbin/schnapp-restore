@@ -1,0 +1,35 @@
+#!/bin/sh
+# Restore PostgreSQL from a dump (default: BACKUP_DIR/schnapp-latest.dump).
+# Stops API during restore. Web can stay up but will error until API returns.
+# Usage: schnapp-restore [path-to.dump]
+set -eu
+# shellcheck source=/usr/local/sbin/schnapp-lib.sh
+. /usr/local/sbin/schnapp-lib.sh
+
+schnapp_need_root
+schnapp_load_config
+
+dir="${BACKUP_DIR:-/opt/schnapp/data/blobs/_appliance/db}"
+dump="${1:-${dir}/schnapp-latest.dump}"
+
+[ -f "$dump" ] || schnapp_die "dump not found: $dump"
+
+schnapp_log "stopping schnapp-api"
+rc-service schnapp-api stop 2>/dev/null || true
+
+export PGPASSWORD="${DB_PASSWORD}"
+schnapp_log "restoring ${dump} into ${DB_NAME}"
+
+# Drop/recreate public schema objects via --clean when possible
+if pg_restore --help 2>&1 | grep -q -- '--if-exists'; then
+	pg_restore --clean --if-exists -h 127.0.0.1 -U "${DB_USER}" -d "${DB_NAME}" "$dump" \
+		|| schnapp_log "warning: pg_restore reported errors (often OK for --clean on empty DB)"
+else
+	pg_restore --clean -h 127.0.0.1 -U "${DB_USER}" -d "${DB_NAME}" "$dump" \
+		|| schnapp_log "warning: pg_restore reported errors"
+fi
+
+schnapp_log "starting schnapp-api (migrations run on startup if needed)"
+rc-service schnapp-api start
+
+schnapp_log "restore finished"

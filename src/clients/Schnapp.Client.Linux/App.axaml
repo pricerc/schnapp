@@ -1,0 +1,85 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Schnapp.Client.Linux.App"
+             RequestedThemeVariant="Dark">
+  <Application.Styles>
+    <FluentTheme />
+    <!-- DataGrid (Avalonia.Controls.DataGrid package) has no default template without this;
+    without it the control renders as an empty area (used by OfflineQueueWindow). -->
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+  </Application.Styles>
+
+  <!-- TrayIcon / NativeMenuItem do not support x:Name; code-behind resolves by Header. -->
+  <TrayIcon.Icons>
+    <TrayIcons>
+      <TrayIcon ToolTipText="Schnapp"
+                IsVisible="True"
+                Clicked="OnTrayClicked"
+                Icon="Assets/app-icon.ico">
+        <TrayIcon.Menu>
+          <NativeMenu NeedsUpdate="OnTrayMenuNeedsUpdate">
+            <NativeMenuItem Header="⚪  Starting…" Click="OnStatusClick"/>
+            <NativeMenuItemSeparator/>
+
+            <NativeMenuItem Header="Login…" Click="OnLoginClick"/>
+            <NativeMenuItem Header="Settings…" Click="OnSettingsClick"/>
+            <NativeMenuItem Header="Machines…" Click="OnMachinesClick"/>
+            <NativeMenuItemSeparator/>
+
+            <NativeMenuItem Header="Quit" Click="OnQuitClick"/>
+            <NativeMenuItemSeparator/>
+
+            <NativeMenuItem Header="Recent screenshots (0)" IsEnabled="False" Click="OnQueueClick"/>
+            <NativeMenuItem Header="Pause uploads" Click="OnUploadsPauseToggleClick"/>
+            <NativeMenuItemSeparator/>
+
+            <NativeMenuItem Header="Pause capture" Click="OnStopStartClick"/>
+            <NativeMenuItem Header="Open Main Window…" Click="OnOpenClick"/>
+            <NativeMenuItemSeparator/>
+
+            <NativeMenuItem Header="Note" Click="OnJournalNoteClick"/>
+            <NativeMenuItem Header="Tags" Click="OnJournalTagsClick"/>
+            <NativeMenuItemSeparator/>
+
+            <NativeMenuItem Header="Customer">
+              <NativeMenu>
+                <NativeMenuItem Header="(none)" Click="OnJournalCustomerNone"/>
+                <NativeMenuItem Header="Add new…" Click="OnJournalCustomerAdd"/>
+                <NativeMenuItemSeparator/>
+              </NativeMenu>
+            </NativeMenuItem>
+            <NativeMenuItem Header="Project">
+              <NativeMenu>
+                <NativeMenuItem Header="(none)" Click="OnJournalProjectNone"/>
+                <NativeMenuItem Header="Add new…" Click="OnJournalProjectAdd"/>
+                <NativeMenuItemSeparator/>
+              </NativeMenu>
+            </NativeMenuItem>
+            <NativeMenuItem Header="Task">
+              <NativeMenu>
+                <NativeMenuItem Header="(none)" Click="OnJournalTaskNone"/>
+                <NativeMenuItem Header="Add new…" Click="OnJournalTaskAdd"/>
+                <NativeMenuItemSeparator/>
+              </NativeMenu>
+            </NativeMenuItem>
+
+            <NativeMenuItemSeparator/>
+
+            <!-- MRU only (None + recent targets filled in code-behind). -->
+            <NativeMenuItem Header="Journal target">
+              <NativeMenu>
+                <NativeMenuItem Header="None" Click="OnJournalClearClick"/>
+              </NativeMenu>
+            </NativeMenuItem>
+
+            <NativeMenuItemSeparator/>
+            <NativeMenuItem Header="Capture now" Click="OnCaptureNowClick"/>
+            <NativeMenuItemSeparator/>
+            <NativeMenuItem Header="Journal: (none)" IsEnabled="False"/>
+
+          </NativeMenu>
+        </TrayIcon.Menu>
+      </TrayIcon>
+    </TrayIcons>
+  </TrayIcon.Icons>
+</Application>

@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Schnapp.Client.Linux.Views.ImagePreviewWindow"
+        Icon="/Assets/app-icon.ico"
+        Title="Preview"
+        Width="900" Height="700"
+        MinWidth="400" MinHeight="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Bottom"
+                Orientation="Horizontal"
+                Spacing="8"
+                Margin="12"
+                HorizontalAlignment="Stretch">
+      <Button Content="Zoom −" Click="OnZoomOut" MinWidth="72"/>
+      <Button Content="Zoom +" Click="OnZoomIn" MinWidth="72"/>
+      <Button Content="Fit" Click="OnZoomFit" MinWidth="72"/>
+      <Button Content="100%" Click="OnZoomActual" MinWidth="72"/>
+      <TextBlock x:Name="ZoomLabel" VerticalAlignment="Center" Margin="8,0" Opacity="0.8"/>
+      <TextBlock x:Name="InfoLabel" VerticalAlignment="Center" Opacity="0.7" TextWrapping="Wrap"/>
+      <Button Content="Close" HorizontalAlignment="Right" MinWidth="88"
+              IsDefault="True" IsCancel="True" Click="OnClose"/>
+    </StackPanel>
+
+    <ScrollViewer x:Name="Scroller"
+                  HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Auto"
+                  Background="#0c1118"
+                  PointerPressed="OnPanPointerPressed"
+                  PointerMoved="OnPanPointerMoved"
+                  PointerReleased="OnPanPointerReleased"
+                  PointerCaptureLost="OnPanPointerCaptureLost">
+      <!-- Large host so ScrollViewer can pan; image centered when smaller than viewport -->
+      <Panel x:Name="ImageHost" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Image x:Name="PreviewImage"
+               Stretch="Fill"
+               HorizontalAlignment="Left"
+               VerticalAlignment="Top"
+               RenderOptions.BitmapInterpolationMode="HighQuality"/>
+      </Panel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

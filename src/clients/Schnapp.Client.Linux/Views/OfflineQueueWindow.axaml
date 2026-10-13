@@ -1,0 +1,45 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:Schnapp.Client.Linux.Views"
+        x:Class="Schnapp.Client.Linux.Views.OfflineQueueWindow"
+        Icon="/Assets/app-icon.ico"
+        Title="Schnapp — Recent screenshots"
+        Width="900" Height="560"
+        MinWidth="640" MinHeight="360"
+        WindowStartupLocation="Manual">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Top" Spacing="6">
+      <TextBlock Text="Recent screenshots" FontSize="18" FontWeight="SemiBold"/>
+      <TextBlock x:Name="SummaryText" Opacity="0.8" TextWrapping="Wrap"/>
+      <TextBlock x:Name="ErrorText" Foreground="#e06c75" TextWrapping="Wrap" IsVisible="False"/>
+      <TextBlock Opacity="0.65" FontSize="12"
+                 Text="Each row is one capture batch (everything captured at the same time): pending (not yet uploaded) and cached (already uploaded, kept locally) items are both shown. Double-click a thumbnail to preview. Deleting a pending row discards it permanently; deleting an already-uploaded row only clears the local copy."/>
+      <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+        <Button x:Name="OlderButton" Content="◀ Older" Click="OnOlderDay"/>
+        <TextBlock x:Name="DateFilterText" VerticalAlignment="Center" MinWidth="100" TextAlignment="Center" FontWeight="SemiBold"/>
+        <Button x:Name="NewerButton" Content="Newer ▶" Click="OnNewerDay"/>
+        <Button x:Name="ShowAllButton" Content="Show all dates" Click="OnShowAll" IsEnabled="False"/>
+      </StackPanel>
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+      <Button x:Name="SelectAllButton" Content="Select all" Click="OnSelectAll"/>
+      <Button x:Name="SelectNoneButton" Content="Select none" Click="OnSelectNone"/>
+      <Button x:Name="EditButton" Content="Edit selected" Click="OnEdit" IsEnabled="False"/>
+      <Button x:Name="DeleteButton" Content="Delete selected rows" Click="OnDelete" IsEnabled="False"/>
+      <Button x:Name="RefreshButton" Content="Refresh" Click="OnRefresh"/>
+      <Button x:Name="PushButton" Content="Push all" Click="OnPush"/>
+      <Button Content="Close" HorizontalAlignment="Right" Click="OnClose" IsCancel="True"/>
+    </StackPanel>
+
+    <DataGrid x:Name="QueueGrid"
+              Margin="0,12,0,0"
+              AutoGenerateColumns="False"
+              CanUserSortColumns="True"
+              CanUserReorderColumns="False"
+              CanUserResizeColumns="True"
+              IsReadOnly="True"
+              SelectionMode="Extended"
+              GridLinesVisibility="Horizontal"/>
+  </DockPanel>
+</Window>

@@ -1,0 +1,159 @@
+#!/bin/sh
+# Format (if needed) and mount second disk at /opt/schnapp/data.
+# Creates postgresql/ (PGDATA) and blobs/ underneath.
+#
+# Do not rely on set -e for control flow — optional tools and blkid must not
+# abort the script silently before logging.
+set -u
+
+LOG=/var/log/schnapp-data-volume.log
+exec >>"$LOG" 2>&1
+echo "---- $(date -u +%Y-%m-%dT%H:%M:%SZ) pid=$$ ----"
+
+# shellcheck source=/usr/local/sbin/schnapp-lib.sh
+if [ -f /usr/local/sbin/schnapp-lib.sh ]; then
+	. /usr/local/sbin/schnapp-lib.sh
+else
+	echo "error: missing /usr/local/sbin/schnapp-lib.sh" >&2
+	exit 1
+fi
+
+schnapp_need_root
+schnapp_load_config
+
+label="${DATA_DISK_LABEL:-schnapp-data}"
+mp="${DATA_MOUNTPOINT:-/opt/schnapp/data}"
+pgdata="${PGDATA:-/opt/schnapp/data/postgresql}"
+blobs="${BLOB_MOUNTPOINT:-/opt/schnapp/data/blobs}"
+
+schnapp_log "start label=${label} mp=${mp}"
+
+mkdir -p "$mp"
+
+ensure_layout() {
+	mkdir -p "$pgdata" "$blobs"
+	chown postgres:postgres "$pgdata" 2>/dev/null || true
+	chmod 700 "$pgdata" 2>/dev/null || true
+	chown schnapp:schnapp "$blobs" 2>/dev/null || true
+	chmod 755 "$blobs" 2>/dev/null || true
+}
+
+already_mounted() {
+	if command -v mountpoint >/dev/null 2>&1; then
+		mountpoint -q "$mp" 2>/dev/null && return 0
+	fi
+	mount 2>/dev/null | grep -q " on ${mp} " && return 0
+	return 1
+}
+
+if already_mounted; then
+	schnapp_log "${mp} already mounted"
+	ensure_layout
+	df -h "$mp" || true
+	exit 0
+fi
+
+# Wait for virtio disk (QNAP may attach after early sysinit)
+wait_for_disk() {
+	i=0
+	while [ "$i" -lt 30 ]; do
+		if blkid -L "$label" >/dev/null 2>&1; then
+			return 0
+		fi
+		if [ -b /dev/vdb ] || [ -b /dev/sdb ]; then
+			return 0
+		fi
+		i=$((i + 1))
+		sleep 1
+	done
+	return 1
+}
+
+schnapp_log "waiting for data disk..."
+if ! wait_for_disk; then
+	schnapp_log "blkid:"; blkid 2>/dev/null || true
+	schnapp_log "lsblk:"; lsblk 2>/dev/null || true
+	schnapp_die "no data disk appeared within 30s (attach second virtio disk)"
+fi
+
+# --- pick device ---
+dev=""
+if blkid -L "$label" >/dev/null 2>&1; then
+	dev=$(blkid -L "$label" 2>/dev/null || true)
+	schnapp_log "found LABEL=${label} -> ${dev}"
+fi
+
+if [ -z "$dev" ]; then
+	for cand in /dev/vdb /dev/sdb; do
+		[ -b "$cand" ] || continue
+		fs=$(blkid -o value -s TYPE "$cand" 2>/dev/null || true)
+		lbl=$(blkid -o value -s LABEL "$cand" 2>/dev/null || true)
+		if [ -z "$fs" ]; then
+			dev=$cand
+			schnapp_log "using unformatted ${cand}"
+			break
+		fi
+		if [ "$lbl" = "$label" ]; then
+			dev=$cand
+			break
+		fi
+		# Personal appliance: single extra disk — claim vdb/sdb
+		dev=$cand
+		schnapp_log "using ${cand} (fs=${fs:-none} label=${lbl:-none})"
+		if [ -n "$fs" ] && [ "$lbl" != "$label" ]; then
+			e2label "$cand" "$label" 2>/dev/null \
+				|| tune2fs -L "$label" "$cand" 2>/dev/null \
+				|| schnapp_log "warning: could not set LABEL=${label}"
+		fi
+		break
+	done
+fi
+
+if [ -z "$dev" ] || [ ! -b "$dev" ]; then
+	schnapp_log "blkid:"; blkid 2>/dev/null || true
+	schnapp_die "no data disk device resolved"
+fi
+
+fs=$(blkid -o value -s TYPE "$dev" 2>/dev/null || true)
+if [ -z "$fs" ]; then
+	schnapp_log "formatting ${dev} as ext4 LABEL=${label}"
+	mkfs.ext4 -F -L "$label" "$dev" || schnapp_die "mkfs.ext4 failed on ${dev}"
+fi
+
+# fstab (idempotent)
+fstab_line="LABEL=${label} ${mp} ext4 defaults,nofail 0 2"
+if grep -q "LABEL=${label}" /etc/fstab 2>/dev/null; then
+	tmp=$(mktemp)
+	grep -v "LABEL=${label}" /etc/fstab >"$tmp" || true
+	echo "$fstab_line" >>"$tmp"
+	mv "$tmp" /etc/fstab
+elif grep -q " ${mp} " /etc/fstab 2>/dev/null; then
+	tmp=$(mktemp)
+	grep -v " ${mp} " /etc/fstab >"$tmp" || true
+	echo "$fstab_line" >>"$tmp"
+	mv "$tmp" /etc/fstab
+else
+	echo "$fstab_line" >>/etc/fstab
+fi
+schnapp_log "fstab: $fstab_line"
+
+schnapp_log "mounting ${dev} -> ${mp}"
+# Prefer explicit device mount (more reliable than LABEL at early boot)
+if ! mount -t ext4 "$dev" "$mp" 2>/tmp/schnapp-mount.err; then
+	if ! mount "LABEL=${label}" "$mp" 2>>/tmp/schnapp-mount.err; then
+		if ! mount "$mp" 2>>/tmp/schnapp-mount.err; then
+			cat /tmp/schnapp-mount.err 2>/dev/null || true
+			schnapp_die "mount failed for ${dev} -> ${mp}"
+		fi
+	fi
+fi
+
+if ! already_mounted; then
+	schnapp_die "mount reported success but ${mp} is not mounted"
+fi
+
+ensure_layout
+schnapp_log "data volume ready on ${dev}"
+df -h "$mp" || true
+ls -la "$mp" || true
+exit 0

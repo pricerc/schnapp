@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Schnapp.Client.Linux.Controls.TagsInput">
+  <Grid>
+    <TextBox x:Name="Editor"
+             TextWrapping="Wrap"/>
+    <Popup x:Name="SuggestPopup"
+           Placement="Bottom"
+           PlacementTarget="Editor"
+           IsLightDismissEnabled="True">
+      <Border Background="#151b24"
+              BorderBrush="#2a3544"
+              BorderThickness="1"
+              CornerRadius="2"
+              MaxHeight="180"
+              MinWidth="120"
+              BoxShadow="0 4 12 0 #80000000">
+        <ListBox x:Name="SuggestList"
+                 MaxHeight="180"
+                 Background="Transparent"/>
+      </Border>
+    </Popup>
+  </Grid>
+</UserControl>

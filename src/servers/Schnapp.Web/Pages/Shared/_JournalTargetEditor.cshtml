@@ -1,0 +1,92 @@
+@model Schnapp.Web.Models.JournalEditorsViewModel
+<dialog id="journal-target-editor-dialog" class="form-dialog form-dialog-resizable">
+    <form id="journal-target-editor-form" method="post" asp-page-handler="SaveJournalTarget"
+          data-disable-on-submit class="form-dialog-body form-dialog-body-single">
+        <h2 id="journal-target-editor-title">Journal target</h2>
+        @foreach (var kv in Model.HiddenFields)
+        {
+            <input type="hidden" name="@kv.Key" value="@kv.Value" />
+        }
+        <input type="hidden" id="journal-target-editor-id" name="EditTargetId" />
+        <input type="hidden" id="journal-target-editor-link-journal" name="EditTargetLinkJournalId" />
+
+        <div class="field-stack">
+            <label for="journal-target-editor-code">Code</label>
+            <input id="journal-target-editor-code" name="EditTargetCode" />
+        </div>
+        <div class="field-stack">
+            <label for="journal-target-editor-name">Name</label>
+            <input id="journal-target-editor-name" name="EditTargetName" />
+        </div>
+        <div class="field-stack">
+            <label for="journal-target-editor-customer-input">Customer</label>
+            <div class="combo" data-combo data-combo-parent-for="journal-target-editor-project">
+                <input type="hidden" id="journal-target-editor-customer" name="EditTargetCustomerId" />
+                <input type="text" id="journal-target-editor-customer-input" class="combo-input" autocomplete="off"
+                       placeholder="Search customers…" />
+                <button type="button" class="combo-toggle secondary small" tabindex="-1" aria-label="Show options">▾</button>
+                <ul class="combo-list" role="listbox" hidden>
+                    @foreach (var c in Model.Customers)
+                    {
+                        <li role="option" data-value="@c.Id" data-label="@c.Label" data-name="@c.Name"
+                            data-code="@c.Code" data-none="@(c.IsNone ? "1" : null)">@c.Label</li>
+                    }
+                </ul>
+            </div>
+            <p id="journal-target-editor-customer-name" class="select-caption muted" aria-live="polite"></p>
+        </div>
+        <div class="field-stack">
+            <label for="journal-target-editor-project-input">Project</label>
+            <div class="combo" data-combo data-combo-filter-parent="journal-target-editor-customer"
+                 data-combo-parent-for="journal-target-editor-task">
+                <input type="hidden" id="journal-target-editor-project" name="EditTargetProjectId" />
+                <input type="text" id="journal-target-editor-project-input" class="combo-input" autocomplete="off"
+                       placeholder="Search projects…" />
+                <button type="button" class="combo-toggle secondary small" tabindex="-1" aria-label="Show options">▾</button>
+                <ul class="combo-list" role="listbox" hidden>
+                    @foreach (var p in Model.Projects)
+                    {
+                        <li role="option" data-value="@p.Id" data-label="@p.Label" data-name="@p.Name"
+                            data-code="@p.Code" data-parent="@p.ParentId" data-none="@(p.IsNone ? "1" : null)">@p.Label</li>
+                    }
+                </ul>
+            </div>
+            <p id="journal-target-editor-project-name" class="select-caption muted" aria-live="polite"></p>
+        </div>
+        <div class="field-stack">
+            <label for="journal-target-editor-task-input">Task</label>
+            <div class="combo" data-combo data-combo-filter-parent="journal-target-editor-project">
+                <input type="hidden" id="journal-target-editor-task" name="EditTargetTaskId" />
+                <input type="text" id="journal-target-editor-task-input" class="combo-input" autocomplete="off"
+                       placeholder="Search tasks…" />
+                <button type="button" class="combo-toggle secondary small" tabindex="-1" aria-label="Show options">▾</button>
+                <ul class="combo-list" role="listbox" hidden>
+                    @foreach (var t in Model.Tasks)
+                    {
+                        <li role="option" data-value="@t.Id" data-label="@t.Label" data-name="@t.Name"
+                            data-code="@t.Code" data-parent="@t.ParentId" data-none="@(t.IsNone ? "1" : null)">@t.Label</li>
+                    }
+                </ul>
+            </div>
+            <p id="journal-target-editor-task-name" class="select-caption muted" aria-live="polite"></p>
+        </div>
+        <div class="field-stack">
+            <label for="journal-target-editor-tags">Tags</label>
+            <input id="journal-target-editor-tags" name="EditTargetTags" data-tags-autocomplete autocomplete="off" />
+        </div>
+        <div class="field-stack field-notes">
+            <label for="journal-target-editor-notes">Notes</label>
+            <textarea id="journal-target-editor-notes" name="EditTargetNotes" rows="3"></textarea>
+        </div>
+
+        <div class="form-dialog-actions">
+            <button type="submit" class="btn-with-icon" id="journal-target-editor-save">
+                <partial name="_Icon" model='"save"' /><span>Save target</span>
+            </button>
+            <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                <partial name="_Icon" model='"close"' /><span>Cancel</span>
+            </button>
+        </div>
+    </form>
+</dialog>
+<script type="application/json" id="journal-editors-data">@Html.Raw(Model.DataJson)</script>

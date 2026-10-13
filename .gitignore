@@ -1,0 +1,58 @@
+## Build
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+[Ll]ogs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/*
+.vscode/*
+.idea/
+*.swp
+*~
+
+## Data / local runtime
+/data/*
+!/data/.gitkeep
+**/appsettings.*.local.json
+**/appsettings.Local.json
+
+## Secrets / env
+.env
+.env.*
+!.env.example
+secrets.json
+
+## Test / coverage
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+
+## OS
+.DS_Store
+Thumbs.db
+
+## NuGet
+*.nupkg
+**/packages/
+
+
+# User-specific files
+project.lock.json
+project.fragment.lock.json
+artifacts/
+docs/Archive/*
+docs/phase1_session-ses_0a4b.md
+docs/ses*.json
+src/data/blobs/*
+legacy/
+legacy/api
+legacy/desktop
+legacy/webapp
+*.bak
+*.orig
+sixlabors.lic

@@ -1,0 +1,60 @@
+@page
+@model Schnapp.Web.Pages.Admin.SettingsModel
+@{
+    ViewData["Title"] = "Admin · Settings";
+    ViewData["Wide"] = true;
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+<div class="card">
+    <div class="page-head">
+        <h1>Settings</h1>
+        <p class="muted" style="margin:0">Org key / value configuration</p>
+    </div>
+
+    @if (Model.Settings.Count == 0)
+    {
+        <div class="empty-state">
+            <strong>No settings</strong>
+            Settings are seeded by the API.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-grid">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Value</th>
+                        <th>Notes</th>
+                        <th class="actions" title="Save"><span class="sr-only">Save</span></th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var s in Model.Settings.OrderBy(x => x.Key))
+                {
+                    var formId = "setting-" + s.Key.Replace('.', '-').Replace(' ', '-');
+                    <tr>
+                        <td><code>@s.Key</code></td>
+                        <td>
+                            <form id="@formId" method="post" asp-page-handler="Save" data-disable-on-submit></form>
+                            <input form="@formId" type="hidden" name="Key" value="@s.Key" />
+                            <input form="@formId" class="cell-input" type="text" name="Value" value="@s.Value" aria-label="Value for @s.Key" />
+                        </td>
+                        <td class="muted">@(s.Notes ?? "—")</td>
+                        <td class="actions">
+                            <button form="@formId" type="submit" class="icon-btn primary" title="Save @s.Key" aria-label="Save @s.Key">
+                                <partial name="_Icon" model='"save"' />
+                            </button>
+                        </td>
+                        <td class="muted" style="white-space:nowrap">@s.UpdatedAt.ToString("u")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

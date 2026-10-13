@@ -1,0 +1,133 @@
+@page
+@model Schnapp.Web.Pages.Tags.IndexModel
+@{
+    ViewData["Title"] = "Tags";
+    ViewData["Wide"] = true;
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+<div class="card">
+    <div class="page-head">
+        <div>
+            <h1>General tags</h1>
+            <p class="muted" style="margin:0">
+                Org-wide dictionary (no customer). Used for autocomplete everywhere.
+                Assign a tag to a customer to move it into that customer's list.
+            </p>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data-grid tag-dict-grid">
+            <thead>
+                <tr>
+                    <th style="width:14rem">Tag</th>
+                    <th colspan="2">Notes</th>
+                    <th class="actions" title="Assign to customer"><span class="sr-only">Assign</span></th>
+                    <th class="actions" title="Delete"><span class="sr-only">Delete</span></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var t in Model.Tags)
+            {
+                <tr>
+                    <td><code>@t.Tag</code></td>
+                    <td colspan="2">
+                        <form method="post" asp-page-handler="SaveNotes" data-disable-on-submit class="tag-notes-form tag-notes-row">
+                            <input type="hidden" name="EditTag" value="@t.Tag" />
+                            <input type="text" name="EditNotes" value="@t.Notes" class="tag-notes-input" placeholder="Notes…" />
+                            <button type="submit" class="icon-btn" title="Save notes for @t.Tag" aria-label="Save notes for @t.Tag">
+                                <partial name="_Icon" model='"save"' />
+                            </button>
+                        </form>
+                    </td>
+                    <td class="actions">
+                        <button type="button" class="icon-btn" title="Assign @t.Tag to a customer" aria-label="Assign @t.Tag to a customer"
+                                data-open-dialog="assign-tag-dialog"
+                                data-assign-tag="@t.Tag">
+                            <partial name="_Icon" model='"link"' />
+                        </button>
+                    </td>
+                    <td class="actions">
+                        <form method="post" asp-page-handler="Delete" data-disable-on-submit class="inline-form">
+                            <input type="hidden" name="EditTag" value="@t.Tag" />
+                            <button type="submit" class="icon-btn danger" title="Delete @t.Tag" aria-label="Delete @t.Tag"
+                                    data-confirm="Delete tag @t.Tag from the general dictionary?">
+                                <partial name="_Icon" model='"trash"' />
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Tags.Count == 0)
+            {
+                <tr><td colspan="5" class="muted">No general tags yet. Add one below.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <form method="post" asp-page-handler="Create" data-disable-on-submit class="tag-add-form">
+        <h2 class="section-subhead">Add general tag</h2>
+        <div class="entity-fields entity-fields-tags-notes">
+            <div class="field-row">
+                <label asp-for="NewTag">Tag</label>
+                <input asp-for="NewTag" autocomplete="off" placeholder="single token" />
+            </div>
+            <div class="field-row">
+                <label asp-for="NewNotes">Notes</label>
+                <input asp-for="NewNotes" placeholder="optional" />
+            </div>
+        </div>
+        <div class="form-actions" style="margin-top:0.75rem">
+            <button type="submit" class="btn-with-icon">
+                <partial name="_Icon" model='"plus"' /><span>Add tag</span>
+            </button>
+        </div>
+    </form>
+</div>
+
+<dialog id="assign-tag-dialog" class="form-dialog">
+    <form method="post" asp-page-handler="Assign" data-disable-on-submit class="form-dialog-body">
+        <h2>Assign to customer</h2>
+        <p class="muted">Moves the tag out of the general list into the customer's tag dictionary.</p>
+        <input type="hidden" name="AssignTag" id="assign-tag-value" />
+        <div class="field-row">
+            <label for="assign-tag-label">Tag</label>
+            <input type="text" id="assign-tag-label" readonly />
+        </div>
+        <div class="field-row">
+            <label for="AssignCustomerId">Customer</label>
+            <select name="AssignCustomerId" id="AssignCustomerId" required>
+                <option value="">— select —</option>
+                @foreach (var c in Model.Customers)
+                {
+                    <option value="@Schnapp.Contracts.Uuid7Text.Format(c.Id)">@c.Name (@c.Code)</option>
+                }
+            </select>
+        </div>
+        <div class="form-dialog-actions">
+            <button type="submit" class="btn-with-icon">
+                <partial name="_Icon" model='"link"' /><span>Assign</span>
+            </button>
+            <button type="button" class="btn secondary" data-close-dialog>Cancel</button>
+        </div>
+    </form>
+</dialog>
+
+@section Scripts {
+<script>
+(function () {
+  document.querySelectorAll('[data-assign-tag]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var tag = btn.getAttribute('data-assign-tag') || '';
+      var v = document.getElementById('assign-tag-value');
+      var l = document.getElementById('assign-tag-label');
+      if (v) v.value = tag;
+      if (l) l.value = tag;
+    });
+  });
+})();
+</script>
+}

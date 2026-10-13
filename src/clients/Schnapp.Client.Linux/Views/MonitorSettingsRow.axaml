@@ -1,0 +1,127 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Schnapp.Client.Linux.Views.MonitorSettingsRow"
+             Margin="8,6,4,4"
+             HorizontalAlignment="Stretch">
+  <!-- Two-row grid for Avalonia previewer; runtime fills named fields. -->
+  <Grid ColumnDefinitions="200*,20,Auto"
+        RowDefinitions="Auto,Auto"
+        RowSpacing="2"
+        ColumnSpacing="4"
+        HorizontalAlignment="Stretch">
+
+
+    <StackPanel Orientation="Horizontal"
+                Grid.Row="0"
+                Grid.Column="0"
+                Spacing="8"
+                VerticalAlignment="Center">
+
+      <CheckBox x:Name="CaptureCheck"
+                Content="1: DisplayPort-1"
+                FontWeight="SemiBold"
+                VerticalAlignment="Center"
+                />
+
+      <TextBlock x:Name="MonitorDescriptionLabel"
+                 Text="ASUSTek Computer Inc 24&quot; - 3840 × 2160"
+                 Opacity="0.9"
+                 FontSize="12"
+                 TextWrapping="NoWrap"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Left"/>
+    </StackPanel>
+
+    <StackPanel Orientation="Horizontal"
+                Grid.Row="0"
+                Grid.Column="2"
+                Spacing="8"
+                VerticalAlignment="Center">
+
+      <ToggleSwitch x:Name="QualityOverrideCheck"
+                    ToolTip.Tip="If checked, overrides the default quality"
+                    IsCheckedChanged="OnQualityOverrideChanged"
+                    OnContent=""
+                    OffContent=""/>
+
+      <TextBlock x:Name="QualityLabel"
+                 Text="Quality"
+                 Opacity="0.9"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Left"
+                 TextWrapping="NoWrap"
+                 FontSize="11"/>
+
+      <NumericUpDown x:Name="QualityBox"
+                     Minimum="10"
+                     Maximum="100"
+                     FontSize="12"
+                     Increment="5"
+                     Value="80"
+                     IsEnabled="False"
+                     VerticalAlignment="Center"
+                     ToolTip.Tip="JPEG/WebP quality for this monitor (higher = better, larger files)"
+                     />
+    </StackPanel>
+
+
+    <Grid Grid.Row="1"
+          Grid.Column="0"
+          ColumnDefinitions="Auto,*,120" ColumnSpacing="8"
+          >
+      <TextBlock Text="Scale:"
+                 Opacity="0.9"
+                 VerticalAlignment="Center"
+                 TextWrapping="NoWrap"/>
+
+      <Slider x:Name="OutputSlider"
+              Grid.Column="1"
+              IsSnapToTickEnabled="True"
+              TickPlacement="None"
+              Minimum="25"
+              Maximum="100"
+              Value="100"
+              MinWidth="150"
+              PropertyChanged="OnOutputSliderPropertyChanged"
+              />
+
+      <TextBlock x:Name="OutputLabel"
+                 Grid.Column="2"
+                 Text="100% - 3840 × 2160"
+                 FontSize="11"
+                 Opacity="0.9"
+                 VerticalAlignment="Center"
+                 TextWrapping="NoWrap"
+                 />
+    </Grid>
+
+
+    <StackPanel Orientation="Horizontal"
+                Grid.Row="1"
+                Grid.Column="2"
+                VerticalAlignment="Center">
+
+      <ToggleSwitch x:Name="OverrideX11Check"
+                    ToolTip.Tip="Off: capture monitor resolution. On: capture frame buffer (larger files)."
+                    IsCheckedChanged="OnOverrideX11Changed"
+                    OnContent=""
+                    OffContent=""
+                    />
+
+      <TextBlock x:Name="AdvancedLabel"
+                 Text="Advanced"
+                 Opacity="0.9"
+                 VerticalAlignment="Center"
+                 TextWrapping="NoWrap"
+                 FontSize="11"/>
+
+      <TextBlock x:Name="GeometryLabel"
+                 Text=" (3840 × 2160)"
+                 Opacity="0.9"
+                 FontSize="11"
+                 TextWrapping="NoWrap"
+                 VerticalAlignment="Center"/>
+    </StackPanel>
+
+  </Grid>
+</UserControl>

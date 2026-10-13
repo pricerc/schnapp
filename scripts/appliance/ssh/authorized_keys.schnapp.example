@@ -1,0 +1,2 @@
+# Rename/copy to authorized_keys.schnapp and replace with real public keys.
+# ssh-ed25519 AAAA... comment

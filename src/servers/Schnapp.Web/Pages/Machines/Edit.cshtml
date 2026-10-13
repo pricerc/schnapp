@@ -1,0 +1,107 @@
+@page "/Machines/{id}"
+@model Schnapp.Web.Pages.Machines.EditModel
+@using Schnapp.Domain
+@{
+    ViewData["Title"] = string.IsNullOrEmpty(Model.Input.Name) ? "Machine" : $"Machine · {Model.Input.Name}";
+    var back = string.IsNullOrWhiteSpace(Model.ReturnUrl) ? "/Account/Profile" : Model.ReturnUrl;
+}
+
+<p class="muted"><a href="@back">← Back</a></p>
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+@if (!string.IsNullOrEmpty(Model.MachineId) && (!string.IsNullOrEmpty(Model.Input.Name) || string.IsNullOrEmpty(Model.Error)))
+{
+    <div class="card">
+        <div class="page-head">
+            <h1>@(string.IsNullOrEmpty(Model.Input.Name) ? "Edit machine" : Model.Input.Name)</h1>
+        </div>
+        @if (Model.LastSeen is not null || Model.RegisteredAt is not null)
+        {
+            <p class="muted">
+                @if (Model.LastSeen is not null)
+                {
+                    <text>Last seen: @Model.LastSeen.Value.ToString("u")</text>
+                }
+                @if (Model.RegisteredAt is not null)
+                {
+                    <text> · Registered: @Model.RegisteredAt.Value.ToString("u")</text>
+                }
+            </p>
+        }
+
+        <form method="post" asp-page-handler="Save" data-disable-on-submit>
+            <input type="hidden" name="from" value="@back" />
+            <div class="entity-fields">
+                <div class="entity-col entity-col-left">
+                    <div class="field-row">
+                        <label asp-for="Input.Code">Code</label>
+                        <input asp-for="Input.Code" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Name">Name</label>
+                        <input asp-for="Input.Name" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Fqdn">FQDN</label>
+                        <input asp-for="Input.Fqdn" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.HardwareFingerprint">Fingerprint</label>
+                        <input asp-for="Input.HardwareFingerprint" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.DisplayName">Display name</label>
+                        <input asp-for="Input.DisplayName" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Tags">Tags</label>
+                        <input asp-for="Input.Tags" />
+                    </div>
+                </div>
+                <div class="entity-col entity-col-right">
+                    <div class="field-row">
+                        <label asp-for="Input.Status">Status</label>
+                        <select asp-for="Input.Status">
+                            @foreach (var (value, label) in MachineStatus.All)
+                            {
+                                if (Model.Input.Status == value)
+                                {
+                                    <option value="@value" selected>@label</option>
+                                }
+                                else
+                                {
+                                    <option value="@value">@label</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.ColourCode">Colour</label>
+                        <div class="colour-field">
+                            <input type="color" value="@(string.IsNullOrWhiteSpace(Model.Input.ColourCode) || Model.Input.ColourCode[0] != '#' ? "#5b9fd4" : Model.Input.ColourCode)" aria-label="Colour swatch" />
+                            <input asp-for="Input.ColourCode" type="text" placeholder="#rrggbb or name" />
+                        </div>
+                    </div>
+                    <div class="field-notes">
+                        <label asp-for="Input.Notes">Notes</label>
+                        <textarea asp-for="Input.Notes" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="entity-footer">
+                <div class="form-actions">
+                    <button type="submit" class="btn-with-icon" formaction="?handler=Save&amp;from=@Uri.EscapeDataString(back)">
+                        <partial name="_Icon" model='"save"' /><span>Save</span>
+                    </button>
+                    <button type="submit" class="btn-with-icon secondary" formaction="?handler=SaveAndClose&amp;from=@Uri.EscapeDataString(back)">
+                        <partial name="_Icon" model='"save-close"' /><span>Save and close</span>
+                    </button>
+                    <a class="btn btn-with-icon secondary" href="@back">
+                        <partial name="_Icon" model='"close"' /><span>Close</span>
+                    </a>
+                </div>
+                <p class="entity-id">Id: <code>@Model.MachineId</code></p>
+            </div>
+        </form>
+    </div>
+}

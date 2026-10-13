@@ -1,0 +1,4 @@
+@Schnapp.Api_HostAddress = http://127.0.0.1:5080
+
+GET {{Schnapp.Api_HostAddress}}/api/v1/health
+Accept: application/json

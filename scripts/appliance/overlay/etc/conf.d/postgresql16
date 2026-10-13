@@ -1,0 +1,2 @@
+# Same as conf.d/postgresql — Alpine may name the service postgresql16
+PGDATA="/opt/schnapp/data/postgresql"

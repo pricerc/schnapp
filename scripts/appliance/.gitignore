@@ -1,0 +1,11 @@
+# Intermediate build under the worktree is discouraged; prefer /opt/schnapp/appliance/.build
+.build/
+vendor/alpine-make-vm-image
+vendor/apk.static*
+defaults.env
+provision/build.env
+provision/publish/
+# Personal SSH material (keep *.example tracked)
+ssh/authorized_keys.root
+ssh/authorized_keys.schnapp
+ssh/hostkeys/

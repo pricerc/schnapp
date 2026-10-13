@@ -1,0 +1,24 @@
+@page
+@model Schnapp.Web.Pages.LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="card" style="max-width: 24rem; margin: 2rem auto;">
+    <h1>Login</h1>
+    <p class="muted">Sign in with email, code, or name.</p>
+
+    <partial name="_Flash" model="((string?)null, Model.Error)" />
+
+    <form method="post" data-disable-on-submit>
+        <label asp-for="Input.Login">Email, code, or name</label>
+        <input asp-for="Input.Login" autocomplete="username" />
+        <span asp-validation-for="Input.Login" class="field-error"></span>
+
+        <label asp-for="Input.Password">Password</label>
+        <input asp-for="Input.Password" type="password" autocomplete="current-password" />
+        <span asp-validation-for="Input.Password" class="field-error"></span>
+
+        <button type="submit">Sign in</button>
+    </form>
+</div>

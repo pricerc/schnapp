@@ -1,0 +1,20 @@
+@page
+@model Schnapp.Web.Pages.Account.AboutModel
+@{
+    ViewData["Title"] = "About";
+}
+
+<div class="card">
+    <h1>About Schnapp</h1>
+    <p class="muted">Screenshot and journal capture for focused work tracking.</p>
+    <table>
+        <tr><th scope="row">Application</th><td>@Model.AppName</td></tr>
+        <tr><th scope="row">Version</th><td>@Model.Version</td></tr>
+        <tr><th scope="row">Runtime</th><td>@Model.Framework</td></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Web BFF</h2>
+    <p class="muted">This site is a browser front-end for the Schnapp API. Session auth uses an HTTP-only cookie; the tray client uses API tokens.</p>
+</div>

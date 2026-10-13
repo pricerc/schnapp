@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="../tests/Schnapp.Api.Tests/Schnapp.Api.Tests.csproj" />
+  <Project Path="../tests/Schnapp.Client.Core.Tests/Schnapp.Client.Core.Tests.csproj" />
+  <Project Path="../tests/Schnapp.Data.Tests/Schnapp.Data.Tests.csproj" />
+  <Project Path="../tests/Schnapp.Domain.Tests/Schnapp.Domain.Tests.csproj" />
+  <Project Path="../tests/Schnapp.Imaging.Tests/Schnapp.Imaging.Tests.csproj" />
+</Solution>

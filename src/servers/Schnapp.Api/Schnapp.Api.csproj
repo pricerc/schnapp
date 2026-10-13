@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Schnapp.Data\Schnapp.Data.csproj" />
+    <ProjectReference Include="..\Schnapp.Domain\Schnapp.Domain.csproj" />
+    <ProjectReference Include="..\..\common\Schnapp.Contracts\Schnapp.Contracts.csproj" />
+    <ProjectReference Include="..\..\common\Schnapp.Imaging\Schnapp.Imaging.csproj" />
+    <ProjectReference Include="..\..\common\Schnapp.ScreenshotEncode\Schnapp.ScreenshotEncode.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="4.1.1" />
+  </ItemGroup>
+
+</Project>

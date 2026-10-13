@@ -1,0 +1,3 @@
+#!/bin/sh
+# Refresh pre-login banner after boot (IP may arrive via DHCP).
+exec /usr/local/sbin/schnapp-update-issue

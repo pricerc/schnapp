@@ -1,0 +1,122 @@
+@model Schnapp.Web.Models.JournalEditorsViewModel
+<dialog id="journal-editor-dialog" class="form-dialog form-dialog-resizable">
+    <form id="journal-editor-form" method="post" asp-page-handler="SaveJournal"
+          data-disable-on-submit class="form-dialog-body form-dialog-body-single">
+        <h2 id="journal-editor-title">Journal</h2>
+        @foreach (var kv in Model.HiddenFields)
+        {
+            <input type="hidden" name="@kv.Key" value="@kv.Value" />
+        }
+        <input type="hidden" id="journal-editor-link-shot" name="EditJournalLinkShotId" />
+        <input type="hidden" id="journal-editor-is-new" name="EditJournalIsNew" value="false" />
+
+        <div class="field-stack">
+            <div class="field-label-row">
+                <label for="journal-editor-id-input">Journal</label>
+                <button type="button" id="journal-editor-new" class="btn secondary small">New journal</button>
+            </div>
+            <div class="combo" data-combo>
+                <input type="hidden" id="journal-editor-id" name="EditJournalId" />
+                <input type="text" id="journal-editor-id-input" class="combo-input" autocomplete="off"
+                       placeholder="Search journals…" />
+                <button type="button" class="combo-toggle secondary small" tabindex="-1" aria-label="Show options">▾</button>
+                <ul class="combo-list" role="listbox" hidden>
+                    <li role="option" data-value="" data-label="— none —">— none —</li>
+                    @foreach (var j in Model.Journals)
+                    {
+                        <li role="option" data-value="@j.Id" data-label="@j.Label">@j.Label</li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="field-stack" id="journal-editor-machine-wrap" hidden>
+            <label for="journal-editor-machine-input">Machine</label>
+            <div class="combo" data-combo>
+                <input type="hidden" id="journal-editor-machine" name="EditJournalMachineId" />
+                <input type="text" id="journal-editor-machine-input" class="combo-input" autocomplete="off"
+                       placeholder="Search machines…" />
+                <button type="button" class="combo-toggle secondary small" tabindex="-1" aria-label="Show options">▾</button>
+                <ul class="combo-list" role="listbox" hidden>
+                    @foreach (var m in Model.Machines)
+                    {
+                        <li role="option" data-value="@m.Id" data-label="@m.Label">@m.Label</li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="field-stack">
+            <div class="field-label-row">
+                <label for="journal-editor-target-input">Target</label>
+                <button type="button" id="journal-editor-edit-target" class="btn-with-icon secondary small"
+                        data-open-dialog="journal-target-editor-dialog">
+                    <partial name="_Icon" model='"edit"' /><span>Edit target</span>
+                </button>
+            </div>
+            <div class="combo" data-combo>
+                <input type="hidden" id="journal-editor-target" name="EditJournalTargetId" />
+                <input type="text" id="journal-editor-target-input" class="combo-input" autocomplete="off"
+                       placeholder="Search targets…" />
+                <button type="button" class="combo-toggle secondary small" tabindex="-1" aria-label="Show options">▾</button>
+                <ul class="combo-list" role="listbox" hidden>
+                    @foreach (var t in Model.Targets)
+                    {
+                        <li role="option" data-value="@t.Id" data-label="@t.Label" data-name="@t.Name">@t.Label</li>
+                    }
+                </ul>
+            </div>
+            <p id="journal-editor-target-name" class="select-caption muted" aria-live="polite"></p>
+        </div>
+
+        <div class="field-stack">
+            <div class="field-label-row">
+                <label for="journal-editor-start-date">Started at <span class="muted">(@Model.ProfileTimeZoneId)</span></label>
+                <span class="datetime-quick" role="group" aria-label="Started quick actions">
+                    <button type="button" class="btn secondary small" data-dt-set="journal-editor-start" data-dt-action="now">Now</button>
+                    <button type="button" class="btn secondary small" data-dt-set="journal-editor-start" data-dt-action="clear">Clear</button>
+                </span>
+            </div>
+            <div class="datetime-parts" data-datetime-parts>
+                <input type="hidden" id="journal-editor-start" name="EditJournalStartLocal" />
+                <input type="date" id="journal-editor-start-date" class="datetime-date" autocomplete="off" />
+                <input type="time" id="journal-editor-start-time" class="datetime-time" step="1" autocomplete="off" />
+            </div>
+        </div>
+        <div class="field-stack">
+            <div class="field-label-row">
+                <label for="journal-editor-stop-date">Finished at <span class="muted">(@Model.ProfileTimeZoneId)</span></label>
+                <span class="datetime-quick" role="group" aria-label="Finished quick actions">
+                    <button type="button" class="btn secondary small" data-dt-set="journal-editor-stop" data-dt-action="now">Now</button>
+                    <button type="button" class="btn secondary small" data-dt-set="journal-editor-stop" data-dt-action="clear" title="Clear = leave journal open">Clear</button>
+                </span>
+            </div>
+            <div class="datetime-parts" data-datetime-parts>
+                <input type="hidden" id="journal-editor-stop" name="EditJournalStopLocal" />
+                <input type="date" id="journal-editor-stop-date" class="datetime-date" autocomplete="off" />
+                <input type="time" id="journal-editor-stop-time" class="datetime-time" step="1" autocomplete="off" />
+            </div>
+            <p class="muted" style="margin:0.2rem 0 0;font-size:0.75rem">Clear Finished to leave the journal open.</p>
+        </div>
+        <div class="field-stack">
+            <label for="journal-editor-tags">Tags</label>
+            <input id="journal-editor-tags" name="EditJournalTags" data-tags-autocomplete autocomplete="off" />
+        </div>
+        <div class="field-stack field-notes">
+            <label for="journal-editor-notes">Notes</label>
+            <textarea id="journal-editor-notes" name="EditJournalNotes" rows="3"></textarea>
+        </div>
+
+        <div class="form-dialog-footer">
+            <div class="form-dialog-actions">
+                <button type="submit" class="btn-with-icon" id="journal-editor-save">
+                    <partial name="_Icon" model='"save"' /><span>Save journal</span>
+                </button>
+                <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                    <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                </button>
+            </div>
+            <p id="journal-editor-id-display" class="entity-id">Id: <code>—</code></p>
+        </div>
+    </form>
+</dialog>

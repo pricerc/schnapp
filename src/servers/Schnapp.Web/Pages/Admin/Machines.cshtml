@@ -1,0 +1,187 @@
+@page
+@model Schnapp.Web.Pages.Admin.MachinesModel
+@using Schnapp.Domain
+@using Schnapp.Contracts
+@{
+    ViewData["Title"] = "Admin · Machines";
+    ViewData["Wide"] = true;
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+@if (!Model.IsAdmin)
+{
+    <div class="card">
+        <h1>Machines</h1>
+        <p class="error">Admin role required.</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="page-head">
+            <h1>Machines</h1>
+            <p class="muted" style="margin:0">Org-wide · @Model.Machines.Count machine(s)</p>
+        </div>
+
+        <div class="toolbar" style="margin-bottom:1rem">
+            <form method="get" class="day-nav-form" style="margin:0;flex:1">
+                <div>
+                    <label for="Status">Filter status</label>
+                    <select id="Status" name="Status" onchange="this.form.submit()">
+                        @if (Model.Status is null)
+                        {
+                            <option value="" selected>All</option>
+                        }
+                        else
+                        {
+                            <option value="">All</option>
+                        }
+                        @foreach (var (value, label) in MachineStatus.All)
+                        {
+                            if (Model.Status == value)
+                            {
+                                <option value="@value" selected>@label</option>
+                            }
+                            else
+                            {
+                                <option value="@value">@label</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </form>
+            <button type="button" class="btn-with-icon" data-open-dialog="register-machine-dialog">
+                <partial name="_Icon" model='"plus"' /><span>Register machine</span>
+            </button>
+        </div>
+
+        @if (Model.Machines.Count == 0)
+        {
+            <div class="empty-state">
+                <strong>No machines@(Model.Status is null ? " registered" : " match this filter")</strong>
+                @if (Model.Status is null)
+                {
+                    <text>Use <strong>Register machine</strong> or the tray client.</text>
+                }
+            </div>
+        }
+        else
+        {
+            <form method="post" asp-page-handler="BulkStatus" data-disable-on-submit>
+                <input type="hidden" name="Status" value="@Model.Status" />
+                <div class="toolbar">
+                    <label class="inline-check">
+                        <input type="checkbox" id="select-all-machines" />
+                        <span>Select all</span>
+                    </label>
+                    <div>
+                        <label for="BulkStatus" class="sr-only">Set status</label>
+                        <select id="BulkStatus" name="BulkStatus" class="cell-input" style="width:auto;min-width:8rem">
+                            @foreach (var (value, label) in MachineStatus.All)
+                            {
+                                if (Model.BulkStatus == value)
+                                {
+                                    <option value="@value" selected>@label</option>
+                                }
+                                else
+                                {
+                                    <option value="@value">@label</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-with-icon" data-confirm="Apply status to selected machines?">
+                        <partial name="_Icon" model='"check"' /><span>Apply to selected</span>
+                    </button>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-grid">
+                        <thead>
+                            <tr>
+                                <th class="actions" title="Select"><span class="sr-only">Select</span></th>
+                                <th>Name</th>
+                                <th>Code</th>
+                                <th>FQDN</th>
+                                <th>Status</th>
+                                <th>Last seen</th>
+                                <th>Id</th>
+                                <th class="actions" title="Edit"><span class="sr-only">Edit</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var m in Model.Machines.OrderBy(x => x.Name))
+                        {
+                            var mid = Uuid7Text.Format(m.Id);
+                            var statusClass = m.Status == MachineStatus.Disabled ? "status-disabled" : "status-active";
+                            <tr>
+                                <td class="actions">
+                                    <input type="checkbox" class="machine-select" name="SelectedIds" value="@mid"
+                                           aria-label="Select @m.Name" />
+                                </td>
+                                <td>@m.Name</td>
+                                <td><code>@m.Code</code></td>
+                                <td class="muted">@(m.Fqdn ?? "—")</td>
+                                <td><span class="status-pill @statusClass">@MachinesModel.StatusLabel(m.Status)</span></td>
+                                <td class="muted">@(m.LastSeen?.ToString("u") ?? "—")</td>
+                                <td class="muted mono"><code>@mid</code></td>
+                                <td class="actions">
+                                    @{
+                                        var fromUrl = Model.Status is null
+                                            ? "/Admin/Machines"
+                                            : $"/Admin/Machines?Status={Model.Status}";
+                                    }
+                                    <a class="icon-btn" href="/Machines/@mid?from=@Uri.EscapeDataString(fromUrl)" title="Edit @m.Name" aria-label="Edit @m.Name">
+                                        <partial name="_Icon" model='"edit"' />
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+        }
+    </div>
+
+    <dialog id="register-machine-dialog" class="form-dialog form-dialog-resizable">
+        <form method="post" asp-page-handler="Register" data-disable-on-submit class="form-dialog-body">
+            <input type="hidden" name="Status" value="@Model.Status" />
+            <h2>Register machine</h2>
+            <p class="muted">Creates a machine and links it to your admin account.</p>
+            <label asp-for="Register.Name">Name</label>
+            <input asp-for="Register.Name" required autocomplete="off" autofocus />
+            <label asp-for="Register.Code">Code (optional)</label>
+            <input asp-for="Register.Code" autocomplete="off" />
+            <label asp-for="Register.Fqdn">FQDN</label>
+            <input asp-for="Register.Fqdn" />
+            <label asp-for="Register.HardwareFingerprint">Hardware fingerprint</label>
+            <input asp-for="Register.HardwareFingerprint" />
+            <label asp-for="Register.DisplayName">Display name (optional)</label>
+            <input asp-for="Register.DisplayName" />
+            <div class="form-dialog-actions">
+                <button type="submit" class="btn-with-icon">
+                    <partial name="_Icon" model='"plus"' /><span>Register</span>
+                </button>
+                <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                    <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                </button>
+            </div>
+        </form>
+    </dialog>
+}
+
+@section Scripts {
+<script>
+(function () {
+  var all = document.getElementById("select-all-machines");
+  if (!all) return;
+  all.addEventListener("change", function () {
+    document.querySelectorAll(".machine-select").forEach(function (cb) {
+      cb.checked = all.checked;
+    });
+  });
+})();
+</script>
+}

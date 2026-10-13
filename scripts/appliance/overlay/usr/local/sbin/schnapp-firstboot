@@ -1,0 +1,102 @@
+#!/bin/sh
+# One-shot first boot: data volume, postgres init + role, configure, enable services.
+set -eu
+# shellcheck source=/usr/local/sbin/schnapp-lib.sh
+. /usr/local/sbin/schnapp-lib.sh
+
+FLAG=/var/lib/schnapp-appliance/firstboot-done
+schnapp_need_root
+schnapp_load_config
+
+if [ -f "$FLAG" ]; then
+	exit 0
+fi
+
+schnapp_log "running first boot setup"
+mkdir -p /var/lib/schnapp-appliance
+
+# Hostname (Alpine OpenRC uses /etc/conf.d/hostname + /etc/hostname)
+APP_HOSTNAME="${HOSTNAME:-schnapp}"
+if [ -n "$APP_HOSTNAME" ]; then
+	printf '%s\n' "$APP_HOSTNAME" >/etc/hostname
+	cat >/etc/conf.d/hostname <<EOF
+hostname="${APP_HOSTNAME}"
+EOF
+	hostname "$APP_HOSTNAME" 2>/dev/null || true
+	rc-service hostname restart 2>/dev/null || true
+fi
+
+# Data disk for Postgres
+/usr/local/sbin/schnapp-data-volume
+
+# Start postgres (OpenRC service name varies by package)
+if [ -f /etc/init.d/postgresql ]; then
+	rc-update add postgresql default 2>/dev/null || true
+	rc-service postgresql start || true
+elif [ -f /etc/init.d/postgresql16 ]; then
+	rc-update add postgresql16 default 2>/dev/null || true
+	rc-service postgresql16 start || true
+fi
+
+# Wait for socket
+i=0
+while [ "$i" -lt 30 ]; do
+	if pg_isready -h 127.0.0.1 -q 2>/dev/null || pg_isready -q 2>/dev/null; then
+		break
+	fi
+	i=$((i + 1))
+	sleep 1
+done
+
+# Create role + database if missing (run as postgres OS user)
+if command -v psql >/dev/null 2>&1; then
+	# gexec needs psql meta — simpler approach:
+	su - postgres -s /bin/sh -c "psql -v ON_ERROR_STOP=1 -d postgres" <<SQL || true
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${DB_USER}') THEN
+    CREATE ROLE ${DB_USER} LOGIN PASSWORD '${DB_PASSWORD}';
+  ELSE
+    ALTER ROLE ${DB_USER} WITH PASSWORD '${DB_PASSWORD}';
+  END IF;
+END
+\$\$;
+SQL
+	# create database if missing
+	exists=$(su - postgres -s /bin/sh -c "psql -tAc \"SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'\"" || true)
+	if [ "$exists" != "1" ]; then
+		su - postgres -s /bin/sh -c "psql -v ON_ERROR_STOP=1 -d postgres -c \"CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};\""
+	fi
+	su - postgres -s /bin/sh -c "psql -v ON_ERROR_STOP=1 -d postgres -c \"GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};\"" || true
+fi
+
+# App config + optional blob mount
+set -- --write-env --db-password "$DB_PASSWORD"
+[ -n "${BLOB_NFS:-}" ] && set -- "$@" --blob-nfs "$BLOB_NFS"
+[ -n "${ADMIN_EMAIL:-}" ] && set -- "$@" --admin-email "$ADMIN_EMAIL"
+[ -n "${ADMIN_PASSWORD:-}" ] && set -- "$@" --admin-password "$ADMIN_PASSWORD"
+/usr/local/sbin/schnapp-configure "$@"
+
+# Ensure app user can write blob root (local on data volume or NFS overmount)
+mkdir -p "${BLOB_MOUNTPOINT:-/opt/schnapp/data/blobs}"
+chown schnapp:schnapp "${BLOB_MOUNTPOINT:-/opt/schnapp/data/blobs}" 2>/dev/null || true
+
+# TLS for HTTPS :443 (self-signed if none provided)
+if [ -x /usr/local/sbin/schnapp-ensure-tls ]; then
+	/usr/local/sbin/schnapp-ensure-tls --cn "${APP_HOSTNAME:-schnapp}" || true
+fi
+if [ -x /opt/schnapp/web/Schnapp.Web ] && command -v setcap >/dev/null 2>&1; then
+	setcap 'cap_net_bind_service=+ep' /opt/schnapp/web/Schnapp.Web 2>/dev/null || true
+fi
+
+rc-update add schnapp-api default 2>/dev/null || true
+rc-update add schnapp-web default 2>/dev/null || true
+rc-update add schnapp-issue default 2>/dev/null || true
+rc-service schnapp-api start || true
+rc-service schnapp-web start || true
+if [ -x /usr/local/sbin/schnapp-update-issue ]; then
+	/usr/local/sbin/schnapp-update-issue || true
+fi
+
+date -u +%Y-%m-%dT%H:%M:%SZ >"$FLAG"
+schnapp_log "first boot complete"

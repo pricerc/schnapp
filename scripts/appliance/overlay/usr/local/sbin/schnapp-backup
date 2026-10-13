@@ -1,0 +1,36 @@
+#!/bin/sh
+# Dump PostgreSQL to BACKUP_DIR (default: on the blob NFS share).
+# Usage: schnapp-backup [label]
+set -eu
+# shellcheck source=/usr/local/sbin/schnapp-lib.sh
+. /usr/local/sbin/schnapp-lib.sh
+
+schnapp_need_root
+schnapp_load_config
+
+label="${1:-manual}"
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+dir="${BACKUP_DIR:-/opt/schnapp/data/blobs/_appliance/db}"
+mkdir -p "$dir"
+
+outfile="${dir}/schnapp-${stamp}-${label}.dump"
+schnapp_log "writing ${outfile}"
+
+# Prefer custom format for pg_restore
+if command -v pg_dump >/dev/null 2>&1; then
+	export PGPASSWORD="${DB_PASSWORD}"
+	pg_dump -Fc -h 127.0.0.1 -U "${DB_USER}" -d "${DB_NAME}" -f "$outfile"
+else
+	schnapp_die "pg_dump not found"
+fi
+
+# Keep a stable "latest" pointer for restore-by-default
+ln -sfn "$(basename "$outfile")" "${dir}/schnapp-latest.dump"
+# Also stash a small config snapshot next to dumps
+if [ -d "${SCHNAPP_PREFIX:-/opt/schnapp}/config" ]; then
+	tar -C "${SCHNAPP_PREFIX}/config" -czf "${dir}/config-${stamp}.tgz" .
+	ln -sfn "config-${stamp}.tgz" "${dir}/config-latest.tgz"
+fi
+
+schnapp_log "backup ok: ${outfile}"
+ls -lh "$outfile"

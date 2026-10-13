@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Schnapp.Client.Core</RootNamespace>
+    <Platforms>x64</Platforms>
+		<Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Version>
+		<AssemblyVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HH"))</AssemblyVersion>
+		<AssemblyFileVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyFileVersion>
+		<AssemblyInformationalVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyInformationalVersion>
+    </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\common\Schnapp.Contracts\Schnapp.Contracts.csproj" />
+    <ProjectReference Include="..\..\common\Schnapp.Imaging\Schnapp.Imaging.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="10.0.11" />
+    <PackageReference Include="System.Net.Http.Json" Version="10.0.11" />
+    <PackageReference Include="Medo.Uuid7" Version="3.2.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <!-- Force a patched SQLite (>= 3.50.2, fixes CVE-2025-6965); Microsoft.Data.Sqlite 10.0.10 still pins 2.1.11. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+  </ItemGroup>
+</Project>

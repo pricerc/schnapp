@@ -1,0 +1,3 @@
+# Alpine OpenRC postgresql* service — point cluster at the data volume.
+# Unversioned single cluster under /opt/schnapp/data (second disk).
+PGDATA="/opt/schnapp/data/postgresql"

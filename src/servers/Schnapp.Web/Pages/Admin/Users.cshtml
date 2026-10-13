@@ -1,0 +1,244 @@
+@page
+@model Schnapp.Web.Pages.Admin.UsersModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Schnapp.Contracts
+@{
+    ViewData["Title"] = "Admin · Users";
+    ViewData["Wide"] = true;
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+@if (!Model.IsAdmin)
+{
+    <div class="card">
+        <h1>Users</h1>
+        <p class="error">Admin role required.</p>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="page-head">
+            <h1>Users</h1>
+            <div class="toolbar" style="margin:0">
+                <p class="muted" style="margin:0">@Model.Users.Count account(s)</p>
+                <button type="button" class="btn-with-icon" data-open-dialog="create-user-dialog">
+                    <partial name="_Icon" model='"plus"' /><span>Create user</span>
+                </button>
+            </div>
+        </div>
+
+        @if (Model.Users.Count == 0)
+        {
+            <div class="empty-state">
+                <strong>No users</strong>
+                Use <strong>Create user</strong> to add the first account.
+            </div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="data-grid users-grid">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Time zone</th>
+                            <th class="actions" title="Edit"><span class="sr-only">Edit</span></th>
+                            <th class="actions" title="Password"><span class="sr-only">Password</span></th>
+                            <th class="actions" title="Delete"><span class="sr-only">Delete</span></th>
+                            <th class="actions" title="Save"><span class="sr-only">Save</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var u in Model.Users)
+                    {
+                        var id = Uuid7Text.Format(u.Id);
+                        var isSelf = u.Id == Model.CurrentUserId;
+                        <tr>
+                            <td>
+                                <form id="save-@id" method="post" asp-page-handler="SaveRow" data-disable-on-submit></form>
+                                <input form="save-@id" type="hidden" name="Row.Id" value="@id" />
+                                <input form="save-@id" type="hidden" name="Row.Status" value="@u.Status" />
+                                <input form="save-@id" class="cell-input" name="Row.Code" value="@u.Code" aria-label="Code for @u.Name" />
+                            </td>
+                            <td>
+                                <input form="save-@id" class="cell-input" name="Row.Name" value="@u.Name" aria-label="Name" />
+                            </td>
+                            <td>
+                                <input form="save-@id" class="cell-input" name="Row.Email" type="email" value="@u.Email" aria-label="Email" />
+                            </td>
+                            <td>
+                                <select form="save-@id" class="cell-input" name="Row.Role" aria-label="Role">
+                                    @if (u.Role == "Admin")
+                                    {
+                                        <option value="User">User</option>
+                                        <option value="Admin" selected>Admin</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="User" selected>User</option>
+                                        <option value="Admin">Admin</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select form="save-@id" class="cell-input" name="Row.TimeZoneId" aria-label="Time zone">
+                                    @foreach (var tz in Model.TimeZoneOptions)
+                                    {
+                                        if (tz == u.TimeZoneId)
+                                        {
+                                            <option value="@tz" selected>@tz</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@tz">@tz</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+                            <td class="actions">
+                                <a class="icon-btn" href="/Admin/Users/@id" title="Edit @u.Name" aria-label="Edit @u.Name">
+                                    <partial name="_Icon" model='"edit"' />
+                                </a>
+                            </td>
+                            <td class="actions">
+                                <button type="button" class="icon-btn"
+                                        title="Set password for @u.Name"
+                                        aria-label="Set password for @u.Name"
+                                        data-password-for="@id"
+                                        data-password-label="@u.Name">
+                                    <partial name="_Icon" model='"key"' />
+                                </button>
+                            </td>
+                            <td class="actions">
+                                @if (!isSelf)
+                                {
+                                    <form method="post" asp-page-handler="Delete" class="inline-form" data-disable-on-submit>
+                                        <input type="hidden" name="Row.Id" value="@id" />
+                                        <button type="submit" class="icon-btn danger"
+                                                title="Delete @u.Name"
+                                                aria-label="Delete @u.Name"
+                                                data-confirm="Delete user @u.Name (@u.Email)? This cannot be undone.">
+                                            <partial name="_Icon" model='"trash"' />
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                            <td class="actions">
+                                <button form="save-@id" type="submit" class="icon-btn primary"
+                                        title="Save @u.Name"
+                                        aria-label="Save @u.Name">
+                                    <partial name="_Icon" model='"save"' />
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <dialog id="create-user-dialog" class="form-dialog form-dialog-resizable">
+        <form method="post" asp-page-handler="Create" data-disable-on-submit class="form-dialog-body">
+            <h2>Create user</h2>
+            <div class="grid-2">
+                <div>
+                    <label asp-for="Input.Code">Code</label>
+                    <input asp-for="Input.Code" autocomplete="off" autofocus />
+                </div>
+                <div>
+                    <label asp-for="Input.Name">Name</label>
+                    <input asp-for="Input.Name" />
+                </div>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label asp-for="Input.Email">Email</label>
+                    <input asp-for="Input.Email" type="email" autocomplete="off" />
+                </div>
+                <div>
+                    <label asp-for="Input.Password">Password</label>
+                    <input asp-for="Input.Password" type="password" autocomplete="new-password" />
+                </div>
+            </div>
+            <div class="grid-2">
+                <div>
+                    <label asp-for="Input.Role">Role</label>
+                    <select asp-for="Input.Role">
+                        <option value="User">User</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="Input.TimeZoneId">Time zone</label>
+                    <select asp-for="Input.TimeZoneId" asp-items="@(new SelectList(Model.TimeZoneOptions))"></select>
+                </div>
+            </div>
+            <div class="form-dialog-actions">
+                <button type="submit" class="btn-with-icon">
+                    <partial name="_Icon" model='"plus"' /><span>Create user</span>
+                </button>
+                <button type="button" class="btn-with-icon secondary" data-close-dialog>
+                    <partial name="_Icon" model='"close"' /><span>Cancel</span>
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog id="password-dialog" class="form-dialog form-dialog-resizable">
+        <form method="post" asp-page-handler="ResetPassword" data-disable-on-submit class="form-dialog-body">
+            <h2>Set password</h2>
+            <p class="muted" id="password-user-label">User</p>
+            <input type="hidden" name="Reset.UserId" id="password-user-id" />
+            <div class="field-row">
+                <label for="password-new">Password</label>
+                <div class="password-field">
+                    <input id="password-new" name="Reset.Password" type="password" autocomplete="new-password" minlength="6" required />
+                    <button type="button" class="secondary small" id="password-toggle" aria-pressed="false">Show</button>
+                </div>
+            </div>
+            <div class="form-dialog-actions">
+                <button type="submit" class="btn-with-icon">Set password</button>
+                <button type="button" class="btn-with-icon secondary" id="password-cancel" data-close-dialog>Cancel</button>
+            </div>
+        </form>
+    </dialog>
+}
+
+@section Scripts {
+<script>
+(function () {
+  var dlg = document.getElementById("password-dialog");
+  if (!dlg || typeof dlg.showModal !== "function") return;
+  var idInput = document.getElementById("password-user-id");
+  var label = document.getElementById("password-user-label");
+  var pwd = document.getElementById("password-new");
+  var toggle = document.getElementById("password-toggle");
+
+  document.querySelectorAll("[data-password-for]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      if (idInput) idInput.value = btn.getAttribute("data-password-for") || "";
+      if (label) label.textContent = btn.getAttribute("data-password-label") || "User";
+      if (pwd) { pwd.value = ""; pwd.type = "password"; }
+      if (toggle) { toggle.textContent = "Show"; toggle.setAttribute("aria-pressed", "false"); }
+      dlg.showModal();
+      if (pwd) pwd.focus();
+    });
+  });
+
+  if (toggle && pwd) {
+    toggle.addEventListener("click", function () {
+      var show = pwd.type === "password";
+      pwd.type = show ? "text" : "password";
+      toggle.textContent = show ? "Hide" : "Show";
+      toggle.setAttribute("aria-pressed", show ? "true" : "false");
+    });
+  }
+})();
+</script>
+}

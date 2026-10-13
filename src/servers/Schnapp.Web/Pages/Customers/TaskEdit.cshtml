@@ -1,0 +1,87 @@
+@page "/Customers/Tasks/{id}"
+@using Schnapp.Domain
+@model Schnapp.Web.Pages.Customers.TaskEditModel
+@{
+    ViewData["Title"] = Model.TaskItem?.Name ?? "Task";
+}
+
+<p class="muted"><a href="@Model.BackUrl">← Back</a></p>
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+@if (Model.TaskItem is not null)
+{
+    <div class="card">
+        <h1>Task</h1>
+        @if (Model.Customer is not null)
+        {
+            <p class="muted">
+                Customer: <a href="/Customers/@Uri.EscapeDataString(Model.Customer.Code)">@Model.Customer.Name</a>
+                @if (Model.Project is not null)
+                {
+                    <text> · Project: <a href="/Customers/@Uri.EscapeDataString(Model.Customer.Code)/Projects/@Uri.EscapeDataString(Model.Project.Code)">@Model.Project.Name</a></text>
+                }
+            </p>
+        }
+        <form method="post" asp-page-handler="Save" data-disable-on-submit>
+            <div class="entity-fields">
+                <div class="entity-col entity-col-left">
+                    <div class="field-row">
+                        <label asp-for="Input.Code">Code</label>
+                        <input asp-for="Input.Code" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Name">Name</label>
+                        <input asp-for="Input.Name" />
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.Tags">Tags</label>
+                        <input asp-for="Input.Tags" />
+                    </div>
+                </div>
+                <div class="entity-col entity-col-right">
+                    <div class="field-row">
+                        <label asp-for="Input.Status">Status</label>
+                        <select asp-for="Input.Status">
+                            @foreach (var (value, label) in ListEntityStatus.All)
+                            {
+                                if (Model.Input.Status == value)
+                                {
+                                    <option value="@value" selected>@label</option>
+                                }
+                                else
+                                {
+                                    <option value="@value">@label</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="field-row">
+                        <label asp-for="Input.ColourCode">Colour</label>
+                        <div class="colour-field">
+                            <input type="color" value="@(string.IsNullOrWhiteSpace(Model.Input.ColourCode) || Model.Input.ColourCode[0] != '#' ? "#5b9fd4" : Model.Input.ColourCode)" aria-label="Colour swatch" />
+                            <input asp-for="Input.ColourCode" type="text" placeholder="#rrggbb or name" />
+                        </div>
+                    </div>
+                </div>
+                <div class="field-row field-notes-row entity-notes-span">
+                    <label asp-for="Input.Notes">Notes</label>
+                    <textarea asp-for="Input.Notes" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="entity-footer">
+                <div class="form-actions">
+                    <button type="submit" class="btn-with-icon" formaction="?handler=Save">
+                        <partial name="_Icon" model='"save"' /><span>Save</span>
+                    </button>
+                    <button type="submit" class="btn-with-icon secondary" formaction="?handler=SaveAndClose">
+                        <partial name="_Icon" model='"save-close"' /><span>Save and close</span>
+                    </button>
+                    <a class="btn btn-with-icon secondary" href="@Model.BackUrl">
+                        <partial name="_Icon" model='"close"' /><span>Close</span>
+                    </a>
+                </div>
+                <p class="entity-id">Id: <code>@Schnapp.Contracts.Uuid7Text.Format(Model.TaskItem.Id)</code></p>
+            </div>
+        </form>
+    </div>
+}

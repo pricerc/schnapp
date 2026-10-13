@@ -1,0 +1,64 @@
+#!/bin/sh
+# Ensure blob mountpoint exists and mount BLOB_NFS (from conf / appliance.env / args).
+# Usage:
+#   schnapp-mount-blobs
+#   schnapp-mount-blobs 192.168.1.10:/share/CACHEDEV1_DATA/schnapp-blobs
+#   schnapp-mount-blobs --nfs4 192.168.1.10:/share/...
+set -eu
+# shellcheck source=/usr/local/sbin/schnapp-lib.sh
+. /usr/local/sbin/schnapp-lib.sh
+
+schnapp_need_root
+schnapp_load_config
+
+NFS_TYPE="${BLOB_NFS_TYPE:-nfs}"
+OPTS="${BLOB_NFS_OPTS:-rw,hard,timeo=100,retrans=2,_netdev}"
+MP="${BLOB_MOUNTPOINT:-/opt/schnapp/data/blobs}"
+SRC="${BLOB_NFS:-}"
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--nfs4) NFS_TYPE=nfs4; shift ;;
+		--nfs) NFS_TYPE=nfs; shift ;;
+		--opts) OPTS="$2"; shift 2 ;;
+		--mount) MP="$2"; shift 2 ;;
+		-h|--help)
+			echo "Usage: schnapp-mount-blobs [--nfs4] [HOST:EXPORT]"
+			echo "  default export from /etc/conf.d/schnapp-appliance or /etc/schnapp/appliance.env"
+			exit 0
+			;;
+		*)
+			SRC="$1"
+			shift
+			;;
+	esac
+done
+
+[ -n "$SRC" ] || schnapp_die "no NFS source (set BLOB_NFS or pass HOST:EXPORT)"
+
+mkdir -p "$MP"
+rc-service rpcbind start 2>/dev/null || true
+
+if mountpoint -q "$MP" 2>/dev/null || mount | grep -q " on ${MP} "; then
+	schnapp_log "already mounted:"
+	mount | grep " on ${MP} " || true
+	exit 0
+fi
+
+schnapp_log "mount -t $NFS_TYPE -o $OPTS $SRC $MP"
+if ! mount -t "$NFS_TYPE" -o "$OPTS" "$SRC" "$MP"; then
+	echo "mount failed. Diagnostics:" >&2
+	echo "  getent hosts ${SRC%%:*}" >&2
+	echo "  ping -c1 ${SRC%%:*}" >&2
+	echo "  showmount -e ${SRC%%:*}   # may be disabled on QNAP" >&2
+	echo "  cat /proc/filesystems | grep nfs" >&2
+	echo "" >&2
+	echo "QNAP export path is NOT 'NFSv=4' — that is a version flag." >&2
+	echo "Typical QNAP path:  192.168.x.x:/share/CACHEDEV1_DATA/YourShare" >&2
+	echo "Force v4:  schnapp-mount-blobs --nfs4 192.168.x.x:/share/..." >&2
+	echo "Or:        mount -t nfs -o vers=4,rw 192.168.x.x:/share/... /opt/schnapp/data/blobs" >&2
+	exit 1
+fi
+
+schnapp_log "ok"
+df -h "$MP"
