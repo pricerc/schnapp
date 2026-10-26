@@ -253,7 +253,7 @@ public sealed class IndexModel : PageModel
         if (string.Equals(saved, "1", StringComparison.Ordinal))
             Message = "Saved.";
         if (string.Equals(deleted, "1", StringComparison.Ordinal))
-            Message = "Screenshot deleted.";
+            Message = "Moved to pending deletes.";
         return Page();
     }
 
@@ -264,9 +264,9 @@ public sealed class IndexModel : PageModel
         if (ids.Count == 0) Error = "Select at least one screenshot.";
         else
         {
-            var (deleted, error) = await _api.DeleteScreenshotsAsync(ids, ct);
+            var (deleted, error) = await _api.SoftDeleteScreenshotsAsync(ids, ct);
             if (error is not null) Error = error;
-            else Message = $"Deleted {deleted} screenshot(s).";
+            else Message = $"Moved {deleted} screenshot(s) to pending deletes.";
         }
         await InitDayAsync(date, monitor, ct);
         return Page();
@@ -283,9 +283,9 @@ public sealed class IndexModel : PageModel
             return Page();
         }
 
-        var (deleted, error) = await _api.DeleteScreenshotsAsync(ids, ct);
+        var (deleted, error) = await _api.SoftDeleteScreenshotsAsync(ids, ct);
         if (error is not null) Error = error;
-        else Message = $"Deleted {deleted} screenshot(s) from selected row(s).";
+        else Message = $"Moved {deleted} screenshot(s) from selected row(s) to pending deletes.";
         await InitDayAsync(date, monitor, ct);
         return Page();
     }
@@ -389,9 +389,10 @@ public sealed class IndexModel : PageModel
     public async Task<IActionResult> OnPostDeleteAsync(Uuid7Param id, string? date, string? monitor, CancellationToken ct)
     {
         if (AuthCookie.GetToken(HttpContext) is null) return RedirectToPage("/Login");
-        var error = await _api.DeleteScreenshotAsync(id, ct);
+        var (n, error) = await _api.SoftDeleteScreenshotsAsync(new[] { id.Value }, ct);
         if (error is not null) Error = error;
-        else Message = "Deleted.";
+        else if (n == 0) Error = "Screenshot was not found.";
+        else Message = "Moved to pending deletes.";
         await InitDayAsync(date, monitor, ct);
         return Page();
     }
@@ -613,8 +614,34 @@ public sealed class IndexModel : PageModel
         }
     }
 
-    /// <summary>When set, the shot viewer reopens on this id after a Save (not Save and close).</summary>
+    /// <summary>When set, the shot viewer reopens on this id after Save, or after Delete when another image remains.</summary>
     public string? OpenViewerId { get; private set; }
+
+    /// <summary>
+    /// Shot to show after deleting one image from the current view order.
+    /// Prefers the following image. When the deleted image is last, uses the previous one.
+    /// Returns null when that image was the only one on the page.
+    /// </summary>
+    public static string? NextViewerShotAfterDelete(IReadOnlyList<string> displayOrder, string deleted)
+    {
+        var index = -1;
+        for (var i = 0; i < displayOrder.Count; i++)
+        {
+            if (string.Equals(displayOrder[i], deleted, StringComparison.OrdinalIgnoreCase))
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index < 0)
+            return null;
+        if (index + 1 < displayOrder.Count)
+            return displayOrder[index + 1];
+        if (index > 0)
+            return displayOrder[index - 1];
+        return null;
+    }
 
     public Task<IActionResult> OnPostSaveViewerAsync(
         string? date, string? monitor, string? FromTime, string? ToTime, CancellationToken ct) =>
@@ -639,17 +666,86 @@ public sealed class IndexModel : PageModel
             return Page();
         }
 
-        var error = await _api.DeleteScreenshotAsync(id, ct);
+        // Order matches the timeline the user is looking at (sort, group, filters, columns).
+        await InitDayAsync(date, monitor, ct);
+        var displayOrder = DisplayShotIds();
+        var nextId = NextViewerShotAfterDelete(displayOrder, Uuid7Text.Format(id));
+
+        var (n, error) = await _api.SoftDeleteScreenshotsAsync(new[] { id }, ct);
         if (error is not null)
         {
             Error = error;
-            await InitDayAsync(date, monitor, ct);
+            return Page();
+        }
+
+        if (n == 0)
+        {
+            Error = "Screenshot was not found.";
             return Page();
         }
 
         var qs = BuildDayQuery(date, monitor, FromTime, ToTime);
         qs["deleted"] = "1";
+        if (!string.IsNullOrEmpty(nextId))
+            qs["open"] = nextId;
         return RedirectToPage("/Index", qs);
+    }
+
+    /// <summary>
+    /// Soft-deletes the open viewer image and returns JSON. The viewer advances locally
+    /// and does not reload the day.
+    /// </summary>
+    public async Task<IActionResult> OnPostSoftDeleteViewerAsync(CancellationToken ct)
+    {
+        if (AuthCookie.GetToken(HttpContext) is null)
+        {
+            return new JsonResult(new { error = "Not signed in." })
+            {
+                StatusCode = StatusCodes.Status401Unauthorized
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(ViewerId) || !Uuid7Text.TryParse(ViewerId, out var id))
+        {
+            return new JsonResult(new { error = "Missing screenshot id." })
+            {
+                StatusCode = StatusCodes.Status400BadRequest
+            };
+        }
+
+        var (n, error) = await _api.SoftDeleteScreenshotsAsync(new[] { id }, ct);
+        if (error is not null)
+        {
+            return new JsonResult(new { error }) { StatusCode = StatusCodes.Status502BadGateway };
+        }
+
+        if (n == 0)
+        {
+            return new JsonResult(new { error = "Screenshot was not found." })
+            {
+                StatusCode = StatusCodes.Status404NotFound
+            };
+        }
+
+        return new JsonResult(new { ok = true });
+    }
+
+    /// <summary>Screenshot ids in the same order as the home timeline anchors.</summary>
+    private List<string> DisplayShotIds()
+    {
+        var ids = new List<string>();
+        foreach (var row in Rows)
+        {
+            foreach (var col in MonitorColumns)
+            {
+                if (!row.ShotsByColumn.TryGetValue(col, out var cell))
+                    continue;
+                foreach (var shot in cell)
+                    ids.Add(Uuid7Text.Format(shot.Id));
+            }
+        }
+
+        return ids;
     }
 
     private async Task<IActionResult> SaveViewerCoreAsync(

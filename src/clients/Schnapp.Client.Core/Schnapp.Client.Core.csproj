@@ -16,12 +16,12 @@
     <ProjectReference Include="..\..\common\Schnapp.Imaging\Schnapp.Imaging.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="10.0.11" />
-    <PackageReference Include="System.Net.Http.Json" Version="10.0.11" />
+    <PackageReference Include="System.Text.Json" Version="10.0.13" />
+    <PackageReference Include="System.Net.Http.Json" Version="10.0.13" />
     <PackageReference Include="Medo.Uuid7" Version="3.2.0" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
-    <PackageReference Include="Dapper" Version="2.1.79" />
-    <!-- Force a patched SQLite (>= 3.50.2, fixes CVE-2025-6965); Microsoft.Data.Sqlite 10.0.10 still pins 2.1.11. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.13" />
+    <PackageReference Include="Dapper" Version="2.1.89" />
+    <!-- Force a patched SQLite (>= 3.50.2, fixes CVE-2025-6965); Microsoft.Data.Sqlite 10.0.13 still pins 2.1.11. -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
   </ItemGroup>
 </Project>

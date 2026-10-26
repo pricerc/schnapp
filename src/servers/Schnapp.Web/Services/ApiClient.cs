@@ -600,6 +600,44 @@ public sealed class ApiClient
         return (await response.Content.ReadFromJsonAsync<ScreenshotResponse>(JsonOptions, ct), null);
     }
 
+    /// <summary>Lists screenshots the user has soft-deleted, newest delete first.</summary>
+    public async Task<List<ScreenshotResponse>?> ListPendingScreenshotsAsync(CancellationToken ct = default)
+    {
+        using var request = CreateAuthorizedRequest(HttpMethod.Get, "/api/v1/screenshots/pending");
+        if (request is null) return null;
+        var response = await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<List<ScreenshotResponse>>(JsonOptions, ct);
+    }
+
+    /// <summary>Hides screenshots from the gallery without removing files.</summary>
+    public async Task<(int Count, string? Error)> SoftDeleteScreenshotsAsync(
+        IEnumerable<Uuid7> ids, CancellationToken ct = default)
+        => await PostScreenshotIdsAsync("/api/v1/screenshots/soft-delete", ids, ct);
+
+    /// <summary>Returns soft-deleted screenshots to the gallery.</summary>
+    public async Task<(int Count, string? Error)> RestoreScreenshotsAsync(
+        IEnumerable<Uuid7> ids, CancellationToken ct = default)
+        => await PostScreenshotIdsAsync("/api/v1/screenshots/restore", ids, ct);
+
+    /// <summary>Permanently deletes screenshots that are already pending, including their files.</summary>
+    public async Task<(int Count, string? Error)> PurgeScreenshotsAsync(
+        IEnumerable<Uuid7> ids, CancellationToken ct = default)
+        => await PostScreenshotIdsAsync("/api/v1/screenshots/purge", ids, ct);
+
+    private async Task<(int Count, string? Error)> PostScreenshotIdsAsync(
+        string path, IEnumerable<Uuid7> ids, CancellationToken ct)
+    {
+        using var request = CreateAuthorizedRequest(HttpMethod.Post, path);
+        if (request is null) return (0, "Not signed in.");
+        request.Content = JsonContent.Create(new ScreenshotBulkDeleteRequest { Ids = ids.ToList() }, options: JsonOptions);
+        var response = await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+            return (0, await response.Content.ReadAsStringAsync(ct));
+        var body = await response.Content.ReadFromJsonAsync<ScreenshotBulkMutationResponse>(JsonOptions, ct);
+        return (body?.Count ?? 0, null);
+    }
+
     /// <summary>Deletes a screenshot owned by the current user.</summary>
     public async Task<string?> DeleteScreenshotAsync(Uuid7 id, CancellationToken ct = default)
     {

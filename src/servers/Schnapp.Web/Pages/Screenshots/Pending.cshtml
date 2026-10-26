@@ -1,0 +1,106 @@
+@page
+@model Schnapp.Web.Pages.Screenshots.PendingModel
+@{
+    ViewData["Title"] = "Pending deletes";
+    ViewData["Wide"] = true;
+}
+
+<partial name="_Flash" model="(Model.Message, Model.Error)" />
+
+<div id="pending-deletes" class="card">
+    <div class="page-head">
+        <div>
+            <h1>Pending deletes</h1>
+            <p class="muted" style="margin:0">
+                These screenshots are hidden from the gallery.
+                Restore puts one back. Permanently delete removes the image and cannot be undone.
+                Times are @Model.ProfileTimeZoneId.
+            </p>
+        </div>
+        <div class="page-head-actions">
+            <a class="btn secondary" href="/">Back to home</a>
+        </div>
+    </div>
+
+    <form id="pending-bulk-form" method="post" class="toolbar" data-disable-on-submit>
+        <button type="submit" id="pending-restore-selected" class="btn-with-icon secondary"
+                asp-page-handler="Restore" disabled>
+            <partial name="_Icon" model='"check"' /><span>Restore</span>
+        </button>
+        <button type="submit" id="pending-purge-selected" class="btn-with-icon danger"
+                asp-page-handler="Purge" disabled
+                data-confirm="Permanently delete the selected screenshots? This cannot be undone.">
+            <partial name="_Icon" model='"trash"' /><span>Permanently delete</span>
+        </button>
+        <span class="muted">@Model.Shots.Count pending</span>
+    </form>
+
+    @if (Model.Shots.Count == 0)
+    {
+        <div class="empty-state">
+            <strong>No pending deletes</strong>
+            Deletes from the gallery wait here until you restore them or remove them for good.
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-grid">
+                <thead>
+                    <tr>
+                        <th class="actions">
+                            <input type="checkbox" id="pending-select-all" aria-label="Select all pending screenshots" />
+                        </th>
+                        <th>Image</th>
+                        <th>Captured</th>
+                        <th>Deleted</th>
+                        <th>Machine</th>
+                        <th>Monitor</th>
+                        <th>Notes</th>
+                        <th class="actions"><span class="sr-only">Restore</span></th>
+                        <th class="actions"><span class="sr-only">Permanently delete</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var shot in Model.Shots)
+                {
+                    <tr>
+                        <td class="actions">
+                            <input type="checkbox" class="pending-select" name="SelectedIds" value="@shot.Id"
+                                   form="pending-bulk-form" aria-label="Select screenshot @shot.Id" />
+                        </td>
+                        <td>
+                            <a href="/Screenshots/Image/@shot.Id" target="_blank" rel="noopener" title="Open image">
+                                <img class="shot-thumb" src="/Screenshots/Thumb/@shot.Id" alt=""
+                                     width="112" height="72" decoding="async" />
+                            </a>
+                        </td>
+                        <td>@shot.When</td>
+                        <td>@shot.Deleted</td>
+                        <td>@shot.Machine</td>
+                        <td>@shot.Monitor</td>
+                        <td>@(string.IsNullOrWhiteSpace(shot.Notes) ? "—" : shot.Notes)</td>
+                        <td class="actions">
+                            <form method="post" asp-page-handler="Restore" class="inline-form" data-disable-on-submit>
+                                <input type="hidden" name="id" value="@shot.Id" />
+                                <button type="submit" class="btn-with-icon secondary small" title="Undo this delete">
+                                    <partial name="_Icon" model='"check"' /><span>Restore</span>
+                                </button>
+                            </form>
+                        </td>
+                        <td class="actions">
+                            <form method="post" asp-page-handler="Purge" class="inline-form" data-disable-on-submit>
+                                <input type="hidden" name="id" value="@shot.Id" />
+                                <button type="submit" class="btn-with-icon danger small"
+                                        data-confirm="Permanently delete this screenshot? This cannot be undone.">
+                                    <partial name="_Icon" model='"trash"' /><span>Permanently delete</span>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

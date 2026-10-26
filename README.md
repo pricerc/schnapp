@@ -66,7 +66,7 @@ dotnet run --project src/clients/Schnapp.Client.Windows
 ./scripts/test.sh unit         # domain + client.core (no DB)
 ./scripts/test.sh data         # migrations
 ./scripts/test.sh api          # API integration
-./scripts/test.sh --filter 'FullyQualifiedName~Health'
+./scripts/test.sh --project tests/Schnapp.Api.Tests/Schnapp.Api.Tests.csproj --filter 'FullyQualifiedName~Health'
 ```
 
 PostgreSQL integration tests use `SCHNAPP_TEST_CONNECTION` (defaults to local `schnapp`/`schnapp` on `127.0.0.1:5432`) and create isolated databases. Firebird tests use Testcontainers (`firebirdsql/firebird:5.0.2`) or `SCHNAPP_TEST_FIREBIRD_CONNECTION`.
@@ -104,6 +104,7 @@ scripts/                     Dev DB, run-dev, tests, deployment helpers
 | [docs/server.md](docs/server.md) | API, Web BFF, storage, auth |
 | [docs/development.md](docs/development.md) | Local setup, tests, scripts |
 | [docs/deployment-fedora.md](docs/deployment-fedora.md) | Production deploy on Fedora (PostgreSQL or Firebird) |
+| [docs/deployment-windows.md](docs/deployment-windows.md) | Laptop server: API, Web, Firebird 5 (guests can reach the API) |
 | [docs/deployment-qnap-appliance.md](docs/deployment-qnap-appliance.md) | Alpine VM for QNAP (PostgreSQL; qcow2 as .img) |
 | [docs/firebird-sql-assessment.md](docs/firebird-sql-assessment.md) | Design record for dual-engine catalog support |
 | [docs/goals.md](docs/goals.md) | Product goals (intent) |
@@ -127,6 +128,8 @@ All build scripts use the same layout:
 ./scripts/deployment/build-linux-client-deployment.sh
 # Windows client (on Windows):
 # .\scripts\deployment\build-windows-client-deployment.ps1
+# Windows server (SDK host, including cross-publish):
+# .\scripts\deployment\build-windows-server-deployment.ps1
 ```
 
 ## Configuration notes

@@ -6,6 +6,10 @@ using Schnapp.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// When hosted by the Service Control Manager, content root must be the install
+// directory (the process cwd is System32) and stop signals must reach Kestrel.
+builder.Host.UseWindowsService(o => o.ServiceName = "SchnappWeb");
+
 builder.Services.AddRazorPages().AddMvcOptions(o =>
 {
     // Many page InputModels use non-nullable `string X { get; set; } = "";` for

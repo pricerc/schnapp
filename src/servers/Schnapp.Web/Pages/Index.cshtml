@@ -65,9 +65,13 @@
             </button>
             <button type="submit" id="home-delete-selected" form="home-bulk-delete-form" class="btn-with-icon secondary"
                     disabled
-                    data-confirm="Delete all selected screenshots? This cannot be undone.">
+                    title="Move selected screenshots to pending deletes">
                 <partial name="_Icon" model='"trash"' /><span>Delete selected</span>
             </button>
+            <a id="home-pending-deletes" class="btn secondary btn-with-icon" href="/Screenshots/Pending"
+               title="Review screenshots waiting to be restored or permanently deleted">
+                <partial name="_Icon" model='"list"' /><span>Pending deletes</span>
+            </a>
             <button type="button" id="home-open-upload" class="btn-with-icon" data-open-dialog="home-upload-dialog"
                     @(Model.Machines.Count == 0 ? "disabled" : null)
                     title="@(Model.Machines.Count == 0 ? "Register a machine first (Admin · Machines)" : "Upload a screenshot")">
@@ -231,7 +235,7 @@
             <button type="submit" id="home-bulk-delete-rows" form="home-bulk-rows-form" class="btn-with-icon secondary"
                     formaction="@Url.Page("/Index", "BulkDeleteRows")"
                     disabled
-                    data-confirm="Delete all screenshots in selected rows? This cannot be undone.">
+                    title="Move screenshots in selected rows to pending deletes">
                 <partial name="_Icon" model='"trash"' /><span>Delete rows</span>
             </button>
             <span id="home-row-selected-count" class="muted">0 row(s) selected</span>
@@ -760,6 +764,8 @@ else
                 <input type="hidden" name="Project" value="@Model.ProjectFilter" />
                 <input type="hidden" name="Task" value="@Model.TaskFilter" />
                 <input type="hidden" name="GroupBy" value="@Model.GroupByNormalized" />
+                <input type="hidden" name="Sort" value="@Model.SortBy" />
+                <input type="hidden" name="Dir" value="@Model.SortDir" />
                 <input type="hidden" id="viewer-date" name="ViewerDate" value="@Model.Date" />
                 <input type="hidden" id="viewer-id" name="ViewerId" />
                 <input type="hidden" id="viewer-machine-id" value="" />
@@ -797,8 +803,9 @@ else
                     </button>
                     <button id="viewer-delete" type="submit" class="btn-with-icon danger"
                             formaction="@Url.Page("/Index", "DeleteViewer")"
+                            data-soft-delete-url="@Url.Page("/Index", "SoftDeleteViewer")"
                             formnovalidate
-                            data-confirm="Delete this screenshot? This cannot be undone.">
+                            title="Move this screenshot to pending deletes">
                         <partial name="_Icon" model='"trash"' /><span>Delete</span>
                     </button>
                     <button id="viewer-close-side" type="submit" class="btn-with-icon secondary"
@@ -806,6 +813,7 @@ else
                         <partial name="_Icon" model='"close"' /><span>Close</span>
                     </button>
                 </div>
+                <p id="viewer-delete-error" class="flash error" role="alert" hidden></p>
                 <p id="viewer-hint" class="muted viewer-hint">← → image · ↑ ↓ batch · PgUp/PgDn ±10 batches · +/- zoom · drag to pan · Esc close</p>
                 <p id="viewer-shot-id" class="entity-id viewer-shot-id">Id: <code>—</code></p>
             </form>

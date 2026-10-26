@@ -7,6 +7,7 @@
 | [server.md](server.md) | API, Web BFF, storage |
 | [development.md](development.md) | Local setup, tests, scripts |
 | [deployment-fedora.md](deployment-fedora.md) | Production deploy on Fedora (DB, API, Web) |
+| [deployment-windows.md](deployment-windows.md) | Windows laptop: API, Web, Firebird 5; API listen address is configurable |
 | [deployment-qnap-appliance.md](deployment-qnap-appliance.md) | Alpine VM disks for QNAP Virtualization Station |
 | [goals.md](goals.md) | Product intent (screenshots + multi-user review) |
 | [mvp-tech-plan.md](mvp-tech-plan.md) | Locked MVP technology and scope |

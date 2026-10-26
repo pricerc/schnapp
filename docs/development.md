@@ -94,8 +94,8 @@ API tests use Testcontainers or `SCHNAPP_TEST_CONNECTION` and create temporary d
 Firebird data/API tests use Testcontainers (`firebirdsql/firebird:5.0.2`) or `SCHNAPP_TEST_FIREBIRD_CONNECTION` (FirebirdClient string, `Charset=UTF8;Dialect=3`).
 
 ```bash
-dotnet test tests/Schnapp.Api.Tests --filter 'FullyQualifiedName~ScreenshotEndpoint'
-dotnet test tests/Schnapp.Client.Core.Tests --filter 'FullyQualifiedName~ScreenshotSpool'
+dotnet test --project tests/Schnapp.Api.Tests -p:Platform=x64 --filter 'FullyQualifiedName~ScreenshotEndpoint'
+dotnet test --project tests/Schnapp.Client.Core.Tests -p:Platform=x64 --filter 'FullyQualifiedName~ScreenshotSpool'
 ```
 
 ## Solutions
@@ -125,6 +125,7 @@ Generate XML doc output only if a project enables `GenerateDocumentationFile` (o
 | **QNAP Alpine appliance** | [deployment-qnap-appliance.md](deployment-qnap-appliance.md) — `scripts/appliance/build-appliance.sh` → `/opt/schnapp/appliance/YYYYMMDD` (qcow2 as `.img`) |
 | **Linux tray client** | `scripts/deployment/build-linux-client-deployment.sh` (kit scripts in `clients/`) |
 | **Windows tray client** | `scripts/deployment/build-windows-client-deployment.ps1` (on Windows; kit scripts in `clients/`) |
+| **Windows server** | [deployment-windows.md](deployment-windows.md) — `scripts/deployment/build-windows-server-deployment.ps1`; kits under `artifacts/{staging,publish,upgrade}/server-windows` |
 
 Artifact layout (every component):
 

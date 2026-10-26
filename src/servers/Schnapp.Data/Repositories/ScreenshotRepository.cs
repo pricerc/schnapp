@@ -117,6 +117,7 @@ public sealed class ScreenshotRepository
             """
             SELECT * FROM screenshot
             WHERE user_id = @userId
+              AND deleted_at IS NULL
               AND timestamp_utc >= @fromUtc
               AND timestamp_utc < @toUtc
               AND (@monitorName IS NULL OR monitor_name = @monitorName)
@@ -178,6 +179,7 @@ public sealed class ScreenshotRepository
             $"""
             SELECT * FROM screenshot
             WHERE user_id = @userId
+              AND deleted_at IS NULL
               AND timestamp_utc >= @fromUtc
               AND timestamp_utc < @toUtc
               AND fingerprint IS NULL
@@ -198,6 +200,7 @@ public sealed class ScreenshotRepository
             """
             SELECT CAST(COUNT(*) AS INTEGER) FROM screenshot
             WHERE user_id = @userId
+              AND deleted_at IS NULL
               AND timestamp_utc >= @fromUtc
               AND timestamp_utc < @toUtc
               AND fingerprint IS NULL
@@ -271,6 +274,89 @@ public sealed class ScreenshotRepository
         _logger.LogDebug("Updated metadata for screenshot {Id} (user {UserId}, setJournal={SetJournal})", id, userId, setJournal);
     }
 
+    /// <summary>Screenshots the user has soft-deleted, newest delete first.</summary>
+    public async Task<IReadOnlyList<Screenshot>> ListPendingDeletesAsync(Uuid7 userId, CancellationToken ct = default)
+    {
+        await using var conn = (System.Data.Common.DbConnection)_db.CreateConnection();
+        await conn.OpenAsync(ct);
+        var rows = await conn.QueryAsync<Screenshot>(new CommandDefinition(
+            """
+            SELECT * FROM screenshot
+            WHERE user_id = @userId
+              AND deleted_at IS NOT NULL
+            ORDER BY deleted_at DESC, timestamp_utc DESC, id
+            """,
+            new { userId }, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    /// <summary>
+    /// Hides owned screenshots from the gallery. Rows already pending are left unchanged.
+    /// </summary>
+    /// <returns>How many rows were newly soft-deleted.</returns>
+    public async Task<int> SoftDeleteForUserAsync(Uuid7 userId, IReadOnlyCollection<Uuid7> ids, CancellationToken ct = default)
+    {
+        var distinct = DistinctIds(ids);
+        if (distinct.Count == 0)
+            return 0;
+
+        var now = DateTimeOffset.UtcNow;
+        return await ExecuteForIdsAsync(
+            userId,
+            distinct,
+            """
+            UPDATE screenshot
+            SET deleted_at = @now
+            WHERE user_id = @userId
+              AND deleted_at IS NULL
+              AND id IN {in}
+            """,
+            new { now },
+            ct);
+    }
+
+    /// <summary>Puts owned pending screenshots back in the gallery.</summary>
+    /// <returns>How many rows were restored.</returns>
+    public async Task<int> RestoreForUserAsync(Uuid7 userId, IReadOnlyCollection<Uuid7> ids, CancellationToken ct = default)
+    {
+        var distinct = DistinctIds(ids);
+        if (distinct.Count == 0)
+            return 0;
+
+        return await ExecuteForIdsAsync(
+            userId,
+            distinct,
+            """
+            UPDATE screenshot
+            SET deleted_at = NULL
+            WHERE user_id = @userId
+              AND deleted_at IS NOT NULL
+              AND id IN {in}
+            """,
+            extra: null,
+            ct);
+    }
+
+    /// <summary>
+    /// Deletes a pending screenshot row owned by <paramref name="userId"/>.
+    /// Active (not soft-deleted) rows are left in place. Caller removes blobs when this returns true.
+    /// </summary>
+    public async Task<bool> PurgePendingForUserAsync(Uuid7 id, Uuid7 userId, CancellationToken ct = default)
+    {
+        await using var conn = (System.Data.Common.DbConnection)_db.CreateConnection();
+        await conn.OpenAsync(ct);
+        var n = await conn.ExecuteAsync(new CommandDefinition(
+            """
+            DELETE FROM screenshot
+            WHERE id = @id AND user_id = @userId AND deleted_at IS NOT NULL
+            """,
+            new { id, userId }, cancellationToken: ct));
+        var purged = n > 0;
+        if (purged)
+            _logger.LogInformation("Purged pending screenshot {Id} for user {UserId}", id, userId);
+        return purged;
+    }
+
     /// <summary>
     /// Deletes a screenshot row owned by <paramref name="userId"/>. Caller removes blobs.
     /// </summary>
@@ -291,6 +377,37 @@ public sealed class ScreenshotRepository
         else
             _logger.LogWarning("DeleteForUserAsync found no matching screenshot {Id} for user {UserId}", id, userId);
         return deleted;
+    }
+
+    private static List<Uuid7> DistinctIds(IReadOnlyCollection<Uuid7> ids) =>
+        ids.Where(id => id != Uuid7.Empty).Distinct().ToList();
+
+    /// <summary>
+    /// Runs <paramref name="sql"/> once per id chunk. <c>{in}</c> is replaced with a bound id list.
+    /// </summary>
+    private async Task<int> ExecuteForIdsAsync(
+        Uuid7 userId,
+        IReadOnlyList<Uuid7> ids,
+        string sql,
+        object? extra,
+        CancellationToken ct)
+    {
+        await using var conn = (System.Data.Common.DbConnection)_db.CreateConnection();
+        await conn.OpenAsync(ct);
+        var total = 0;
+        for (var offset = 0; offset < ids.Count; offset += 500)
+        {
+            var chunk = ids.Skip(offset).Take(500).ToList();
+            var args = new DynamicParameters(extra);
+            args.Add("userId", userId);
+            var list = InClause.Add(args, chunk, "id");
+            total += await conn.ExecuteAsync(new CommandDefinition(
+                sql.Replace("{in}", list, StringComparison.Ordinal),
+                args,
+                cancellationToken: ct));
+        }
+
+        return total;
     }
 
     /// <summary>

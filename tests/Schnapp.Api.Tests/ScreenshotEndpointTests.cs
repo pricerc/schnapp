@@ -262,6 +262,74 @@ public class ScreenshotEndpointTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Soft_delete_hides_from_gallery_until_restore_or_purge()
+    {
+        await LoginAdminAsync();
+        var machine = await CreateMachineAsync("SoftBox");
+        var upload = await UploadAsync(machine.Id, MakePngBytes(32, 32), "image/png", "Mon-1");
+        upload.EnsureSuccessStatusCode();
+        var shot = (await upload.Content.ReadFromJsonAsync<ScreenshotResponse>(JsonTest.Options))!;
+        var idText = Uuid7Text.Format(shot.Id);
+        var day = DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+        var soft = await _client!.PostAsJsonAsync("/api/v1/screenshots/soft-delete", new ScreenshotBulkDeleteRequest
+        {
+            Ids = new List<Uuid7> { shot.Id }
+        }, JsonTest.Options);
+        soft.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await soft.Content.ReadFromJsonAsync<ScreenshotBulkMutationResponse>(JsonTest.Options))!
+            .Count.Should().Be(1);
+
+        var gallery = await _client.GetFromJsonAsync<List<ScreenshotResponse>>(
+            $"/api/v1/screenshots?date={day}", JsonTest.Options);
+        gallery.Should().NotContain(s => s.Id == shot.Id);
+
+        var pending = await _client.GetFromJsonAsync<List<ScreenshotResponse>>(
+            "/api/v1/screenshots/pending", JsonTest.Options);
+        pending.Should().ContainSingle(s => s.Id == shot.Id);
+        pending!.Single(s => s.Id == shot.Id).DeletedAt.Should().NotBeNull();
+
+        var stillThere = await _client.GetAsync($"/api/v1/screenshots/{idText}/image");
+        stillThere.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var restore = await _client.PostAsJsonAsync("/api/v1/screenshots/restore", new ScreenshotBulkDeleteRequest
+        {
+            Ids = new List<Uuid7> { shot.Id }
+        }, JsonTest.Options);
+        restore.EnsureSuccessStatusCode();
+        var back = await _client.GetFromJsonAsync<List<ScreenshotResponse>>(
+            $"/api/v1/screenshots?date={day}", JsonTest.Options);
+        back.Should().Contain(s => s.Id == shot.Id);
+
+        (await _client.PostAsJsonAsync("/api/v1/screenshots/soft-delete", new ScreenshotBulkDeleteRequest
+        {
+            Ids = new List<Uuid7> { shot.Id }
+        }, JsonTest.Options)).EnsureSuccessStatusCode();
+
+        var purge = await _client.PostAsJsonAsync("/api/v1/screenshots/purge", new ScreenshotBulkDeleteRequest
+        {
+            Ids = new List<Uuid7> { shot.Id }
+        }, JsonTest.Options);
+        purge.EnsureSuccessStatusCode();
+        (await purge.Content.ReadFromJsonAsync<ScreenshotBulkMutationResponse>(JsonTest.Options))!
+            .Count.Should().Be(1);
+        (await _client.GetAsync($"/api/v1/screenshots/{idText}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        var live = await UploadAsync(machine.Id, MakePngBytes(16, 16), "image/png", "Mon-1");
+        live.EnsureSuccessStatusCode();
+        var liveShot = (await live.Content.ReadFromJsonAsync<ScreenshotResponse>(JsonTest.Options))!;
+        var skipped = await _client.PostAsJsonAsync("/api/v1/screenshots/purge", new ScreenshotBulkDeleteRequest
+        {
+            Ids = new List<Uuid7> { liveShot.Id }
+        }, JsonTest.Options);
+        skipped.EnsureSuccessStatusCode();
+        (await skipped.Content.ReadFromJsonAsync<ScreenshotBulkMutationResponse>(JsonTest.Options))!
+            .Count.Should().Be(0);
+        (await _client.GetAsync($"/api/v1/screenshots/{Uuid7Text.Format(liveShot.Id)}"))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Rejects_non_image()
     {
         var machine = await CreateMachineAsync("BadBox");

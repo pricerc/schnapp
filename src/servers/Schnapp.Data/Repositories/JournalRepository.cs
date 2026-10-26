@@ -384,6 +384,7 @@ public sealed class JournalRepository
                     MAX(s.timestamp_utc) AS last_ts
                 FROM screenshot s
                 WHERE s.user_id = je.user_id
+                  AND s.deleted_at IS NULL
                   AND s.timestamp_utc >= je.start_utc
                   AND s.timestamp_utc <= COALESCE(je.stop_utc, @nowUtc)
             ) shots ON true
@@ -475,10 +476,12 @@ public sealed class JournalRepository
                 MAXVALUE(0, DATEDIFF(SECOND FROM je.start_utc TO COALESCE(je.stop_utc, @nowUtc))) AS TotalSeconds,
                 (SELECT MIN(s.timestamp_utc) FROM screenshot s
                  WHERE s.user_id = je.user_id
+                   AND s.deleted_at IS NULL
                    AND s.timestamp_utc >= je.start_utc
                    AND s.timestamp_utc <= COALESCE(je.stop_utc, @nowUtc)) AS FirstScreenshotUtc,
                 (SELECT MAX(s.timestamp_utc) FROM screenshot s
                  WHERE s.user_id = je.user_id
+                   AND s.deleted_at IS NULL
                    AND s.timestamp_utc >= je.start_utc
                    AND s.timestamp_utc <= COALESCE(je.stop_utc, @nowUtc)) AS LastScreenshotUtc
             FROM journal_entry je

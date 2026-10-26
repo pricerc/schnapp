@@ -1878,6 +1878,9 @@
       else shotIdEl.textContent = "Id: " + (s.id || "—");
     }
     if (dateInput) dateInput.value = s.date;
+    clearDeleteError();
+    prefetchShot(index + 1);
+    prefetchShot(index - 1);
     setText(fields.when, s.when);
     setText(fields.machine, s.machine);
     setText(fields.monitor, s.monitor);
@@ -1952,6 +1955,151 @@
     // Belt-and-braces if CSS ever breaks closed display again
     dialog.removeAttribute("open");
     ignoreShotClicksUntil = Date.now() + 400;
+  }
+
+  function clearDeleteError() {
+    var el = document.getElementById("viewer-delete-error");
+    if (!el) return;
+    el.hidden = true;
+    el.textContent = "";
+  }
+
+  function showDeleteError(message) {
+    var el = document.getElementById("viewer-delete-error");
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = message;
+  }
+
+  function prefetchShot(i) {
+    if (i < 0 || i >= shots.length || !shots[i] || !shots[i].id) return;
+    var pre = new Image();
+    pre.decoding = "async";
+    pre.src = "/Screenshots/Image/" + encodeURIComponent(shots[i].id);
+  }
+
+  function cssEscape(value) {
+    if (window.CSS && typeof CSS.escape === "function") return CSS.escape(value);
+    return String(value).replace(/"/g, "\\'");
+  }
+
+  // Pull the thumbnail out of the timeline. Returns enough to put it back if the delete fails.
+  function detachShot(id) {
+    var link = document.querySelector('#home-timeline a[data-shot-id="' + cssEscape(id) + '"]');
+    if (!link) return null;
+    var item = link.closest(".shot-item") || link;
+    var parent = item.parentNode;
+    var next = item.nextSibling;
+    var cell = link.closest("td.shot-cell");
+    item.remove();
+    var placeholder = null;
+    if (cell && !cell.querySelector(".shot-item, a[data-shot-id]")) {
+      placeholder = document.createElement("span");
+      placeholder.className = "muted";
+      placeholder.textContent = "—";
+      cell.appendChild(placeholder);
+    }
+    var row = cell ? cell.closest("tr.timeline-data-row") : null;
+    var rowParent = null;
+    var rowNext = null;
+    if (row && !row.querySelector("a[data-shot-id]")) {
+      rowParent = row.parentNode;
+      rowNext = row.nextSibling;
+      row.remove();
+      var countEl = document.getElementById("home-batch-count");
+      if (countEl) {
+        var n = document.querySelectorAll("#home-timeline tr.timeline-data-row").length;
+        countEl.textContent = n + " batch(es)";
+      }
+    }
+    return { item: item, parent: parent, next: next, placeholder: placeholder, row: row, rowParent: rowParent, rowNext: rowNext };
+  }
+
+  function restoreShot(detached) {
+    if (!detached) return;
+    if (detached.row && detached.rowParent) {
+      detached.rowParent.insertBefore(detached.row, detached.rowNext);
+      var countEl = document.getElementById("home-batch-count");
+      if (countEl) {
+        var n = document.querySelectorAll("#home-timeline tr.timeline-data-row").length;
+        countEl.textContent = n + " batch(es)";
+      }
+    }
+    if (detached.placeholder && detached.placeholder.parentNode) detached.placeholder.remove();
+    if (!detached.parent) return;
+    if (detached.next && detached.next.parentNode === detached.parent) {
+      detached.parent.insertBefore(detached.item, detached.next);
+    } else {
+      detached.parent.appendChild(detached.item);
+    }
+  }
+
+  // Advance in the gallery the page already rendered, then soft-delete without reloading the day.
+  function softDeleteCurrent(e) {
+    var deleteBtn = document.getElementById("viewer-delete");
+    var url = deleteBtn ? deleteBtn.getAttribute("data-soft-delete-url") : "";
+    if (!url) return;
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!shots.length || index < 0) collectShots();
+    if (idInput && idInput.value) {
+      var current = shots.findIndex(function (s) { return s.id === idInput.value; });
+      if (current >= 0) index = current;
+    }
+    if (index < 0 || index >= shots.length) return;
+    var shot = shots[index];
+    var nextId = (index + 1 < shots.length) ? shots[index + 1].id : null;
+    var detached = detachShot(shot.id);
+    shots.splice(index, 1);
+    clearDeleteError();
+    if (!shots.length) closeViewer();
+    else showAt(index < shots.length ? index : shots.length - 1);
+
+    var form = document.getElementById("viewer-edit-form");
+    var tokenInput = form ? form.querySelector("input[name='__RequestVerificationToken']") : null;
+    var token = tokenInput ? tokenInput.value : "";
+    var body = new URLSearchParams();
+    body.set("ViewerId", shot.id);
+    if (token) body.set("__RequestVerificationToken", token);
+    fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+        "RequestVerificationToken": token
+      },
+      body: body.toString()
+    }).then(function (r) {
+      return r.json().catch(function () { return { error: "Could not delete this screenshot." }; }).then(function (payload) {
+        if (!r.ok || (payload && payload.error)) {
+          throw new Error((payload && payload.error) || "Could not delete this screenshot.");
+        }
+      });
+    }).catch(function (err) {
+      undoSoftDelete(shot, nextId, detached, (err && err.message) || "Could not delete this screenshot. It is still in the gallery.");
+    });
+  }
+
+  function undoSoftDelete(shot, nextId, detached, message) {
+    var dest = shots.length;
+    if (nextId) {
+      var at = shots.findIndex(function (s) { return s.id === nextId; });
+      if (at >= 0) dest = at;
+    }
+    if (shots.some(function (s) { return s.id === shot.id; })) return;
+    shots.splice(dest, 0, shot);
+    restoreShot(detached);
+    var back = shots.findIndex(function (s) { return s.id === shot.id; });
+    if (back >= 0) showAt(back);
+    showDeleteError(message);
+  }
+
+  var viewerDeleteBtn = document.getElementById("viewer-delete");
+  if (viewerDeleteBtn) {
+    viewerDeleteBtn.addEventListener("click", softDeleteCurrent, true);
   }
 
   // Close buttons: native formmethod=dialog + JS fallback
@@ -2091,6 +2239,33 @@
     if (e.key === "-") { e.preventDefault(); zoomBy(-0.25); }
     if (e.key === "0") { e.preventDefault(); fitImage(); }
   });
+})();
+
+// Pending deletes: enable bulk restore / permanent delete when a row is checked.
+(function () {
+  var form = document.getElementById("pending-bulk-form");
+  if (!form) return;
+  var restore = document.getElementById("pending-restore-selected");
+  var purge = document.getElementById("pending-purge-selected");
+  function inputs() {
+    return Array.prototype.slice.call(document.querySelectorAll(".pending-select"));
+  }
+  function sync() {
+    var any = inputs().some(function (el) { return el.checked; });
+    if (restore) restore.disabled = !any;
+    if (purge) purge.disabled = !any;
+  }
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.classList && t.classList.contains("pending-select")) sync();
+    if (t.id === "pending-select-all") {
+      var on = !!t.checked;
+      inputs().forEach(function (el) { el.checked = on; });
+      sync();
+    }
+  });
+  sync();
 })();
 
 // Mirror a top horizontal scrollbar for wide tables (only when needed).

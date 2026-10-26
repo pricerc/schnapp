@@ -15,6 +15,10 @@ using Schnapp.Screenshots;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// When hosted by the Service Control Manager, content root must be the install
+// directory (the process cwd is System32) and stop signals must reach Kestrel.
+builder.Host.UseWindowsService(o => o.ServiceName = "SchnappApi");
+
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
     Schnapp.Contracts.Uuid7Json.AddUuid7Converters(o.SerializerOptions);

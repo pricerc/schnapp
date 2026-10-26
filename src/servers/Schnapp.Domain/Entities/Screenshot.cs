@@ -57,4 +57,7 @@ public sealed class Screenshot
     public Uuid7? JournalEntryId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>When the screenshot was soft-deleted. Null while it is still in the gallery.</summary>
+    public DateTimeOffset? DeletedAt { get; set; }
 }

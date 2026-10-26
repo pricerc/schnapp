@@ -40,6 +40,9 @@ public sealed class ScreenshotResponse
     public Uuid7? JournalEntryId { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>When the screenshot was soft-deleted. Null while it is still in the gallery.</summary>
+    public DateTimeOffset? DeletedAt { get; set; }
 }
 
 /// <summary>Request body to delete multiple screenshots owned by the caller in one call.</summary>
@@ -54,6 +57,12 @@ public sealed class ScreenshotBulkDeleteResponse
 {
     /// <summary>Count of rows removed (owned by the caller and present).</summary>
     public int Deleted { get; set; }
+}
+
+/// <summary>How many owned rows a bulk soft-delete, restore, or purge changed.</summary>
+public sealed class ScreenshotBulkMutationResponse
+{
+    public int Count { get; set; }
 }
 
 /// <summary>JSON metadata part of multipart screenshot upload.</summary>

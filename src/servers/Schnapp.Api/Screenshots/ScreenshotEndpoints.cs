@@ -63,6 +63,10 @@ public static class ScreenshotEndpoints
         api.MapPatch("/screenshots/{id}", PatchAsync);
         api.MapDelete("/screenshots/{id}", DeleteAsync);
         api.MapPost("/screenshots/bulk-delete", BulkDeleteAsync);
+        api.MapGet("/screenshots/pending", ListPendingAsync);
+        api.MapPost("/screenshots/soft-delete", SoftDeleteAsync);
+        api.MapPost("/screenshots/restore", RestoreAsync);
+        api.MapPost("/screenshots/purge", PurgeAsync);
         api.MapPost("/screenshots/duplicates", FindDuplicatesAsync);
         api.MapPost("/screenshots/fingerprints/backfill", BackfillFingerprintsAsync);
         api.MapGet("/screenshots/{id}/image", GetImageAsync);
@@ -496,6 +500,58 @@ public static class ScreenshotEndpoints
         return Results.Ok(new ScreenshotBulkDeleteResponse { Deleted = deleted });
     }
 
+    /// <summary>Lists screenshots the caller has soft-deleted, newest delete first.</summary>
+    private static async Task<IResult> ListPendingAsync(
+        ClaimsPrincipal principal, ScreenshotRepository shots, CancellationToken ct)
+    {
+        var auth = AuthUser.FromPrincipal(principal);
+        var list = await shots.ListPendingDeletesAsync(auth.Id, ct);
+        return Results.Ok(list.Select(ToResponse));
+    }
+
+    /// <summary>Hides owned screenshots from the gallery without removing files.</summary>
+    private static async Task<IResult> SoftDeleteAsync(
+        ScreenshotBulkDeleteRequest body, ClaimsPrincipal principal, ScreenshotRepository shots, CancellationToken ct)
+    {
+        var auth = AuthUser.FromPrincipal(principal);
+        var count = await shots.SoftDeleteForUserAsync(auth.Id, body.Ids ?? new List<Uuid7>(), ct);
+        return Results.Ok(new ScreenshotBulkMutationResponse { Count = count });
+    }
+
+    /// <summary>Returns owned pending screenshots to the gallery.</summary>
+    private static async Task<IResult> RestoreAsync(
+        ScreenshotBulkDeleteRequest body, ClaimsPrincipal principal, ScreenshotRepository shots, CancellationToken ct)
+    {
+        var auth = AuthUser.FromPrincipal(principal);
+        var count = await shots.RestoreForUserAsync(auth.Id, body.Ids ?? new List<Uuid7>(), ct);
+        return Results.Ok(new ScreenshotBulkMutationResponse { Count = count });
+    }
+
+    /// <summary>
+    /// Permanently deletes screenshots that are already pending. Active rows are skipped.
+    /// Removes the row and its original and thumbnail blobs.
+    /// </summary>
+    private static async Task<IResult> PurgeAsync(
+        ScreenshotBulkDeleteRequest body, ClaimsPrincipal principal, ScreenshotRepository shots,
+        IImageBlobStore blobs, CancellationToken ct)
+    {
+        var auth = AuthUser.FromPrincipal(principal);
+        var purged = 0;
+        foreach (var id in (body.Ids ?? new List<Uuid7>()).Distinct())
+        {
+            var shot = await shots.GetForUserAsync(id, auth.Id, ct);
+            if (shot?.DeletedAt is null)
+                continue;
+            if (!await shots.PurgePendingForUserAsync(id, auth.Id, ct))
+                continue;
+            await blobs.DeleteAsync(shot.StorageKey, ct);
+            await DeleteThumbsAsync(blobs, shot.StorageKey, shot.ThumbStorageKey, ct);
+            purged++;
+        }
+
+        return Results.Ok(new ScreenshotBulkMutationResponse { Count = purged });
+    }
+
     /// <summary>
     /// Backfills missing fingerprints for the caller's screenshots in a day or UTC range,
     /// then returns ids among <paramref name="body"/>.Ids that are blank or idle-duplicates.
@@ -709,6 +765,7 @@ public static class ScreenshotEndpoints
         Tags = s.Tags,
         JournalEntryId = s.JournalEntryId,
         CreatedAt = s.CreatedAt,
+        DeletedAt = s.DeletedAt,
         Fingerprint = DeserializeFingerprint(s.Fingerprint)
     };
 
