@@ -112,6 +112,7 @@ public partial class SettingsWindow : Window
         UpdateMonitorPickVisibility();
         SkipScreensaverBox.IsChecked = s.SkipWhenScreensaverActive;
         IdlePauseBox.Value = Math.Clamp(s.IdlePauseMinutes, 0, 1440);
+        FocusDwellBox.Value = Math.Clamp(s.WindowFocusDwellSeconds, 0, 3600);
         DiscardBlankBox.IsChecked = s.DiscardBlankDuplicates;
         DiscardIdleBox.IsChecked = s.DiscardIdleDuplicates;
         IdleDirtyCellsBox.Value = Math.Clamp(s.IdleMaxDirtyCells, 1, 20);
@@ -238,6 +239,7 @@ public partial class SettingsWindow : Window
 
         s.SkipWhenScreensaverActive = SkipScreensaverBox.IsChecked == true;
         s.IdlePauseMinutes = (int)Math.Clamp(IdlePauseBox.Value ?? 0, 0, 1440);
+        s.WindowFocusDwellSeconds = (int)Math.Clamp(FocusDwellBox.Value ?? 0, 0, 3600);
         s.DiscardBlankDuplicates = DiscardBlankBox.IsChecked == true;
         s.DiscardIdleDuplicates = DiscardIdleBox.IsChecked == true;
         s.IdleMaxDirtyCells = (int)Math.Clamp(IdleDirtyCellsBox.Value ?? 2, 1, 20);
@@ -249,7 +251,7 @@ public partial class SettingsWindow : Window
         _store.Save(s);
         AppLog.InitFileFromSettings(s);
         AppLog.Info(
-            $"Settings updated: full={s.CaptureFullDesktop} monitors={s.CaptureMonitors} window={s.CaptureActiveWindow}");
+            $"Settings updated: full={s.CaptureFullDesktop} monitors={s.CaptureMonitors} window={s.CaptureActiveWindow} focusDwell={s.WindowFocusDwellSeconds}s");
         InfoText.Text = "Saved. Restart the tray app if you changed spool/mutation paths.";
         Reload();
     }

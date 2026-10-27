@@ -3,6 +3,7 @@ namespace Schnapp.Client.Linux.Services;
 using Medo;
 
 using Schnapp.Client.Core.Api;
+using Schnapp.Client.Core.Capture;
 using Schnapp.Client.Core.Config;
 using Schnapp.Client.Core.Imaging;
 using Schnapp.Client.Core.Spool;
@@ -48,6 +49,12 @@ public sealed class CaptureService : IDisposable
     private Task? _uploadsLoop;
     private static readonly TimeSpan UploadsPushInterval = TimeSpan.FromSeconds(20);
     private int _pushInFlight; // 0 = idle, 1 = a push (manual or background) is running
+    private readonly WindowFocusDwellTracker _dwell = new();
+    private readonly SemaphoreSlim _captureGate = new(1, 1);
+    private Task? _dwellLoop;
+    private TimeSpan _focusDwell = TimeSpan.Zero;
+    private DateTime _nextDwellBlockCheckUtc = DateTime.MinValue;
+    private bool _dwellBlocked;
     private TrayStatus _lastStatus = new()
     {
         Level = TrayStatusLevel.Info,
@@ -213,6 +220,8 @@ public sealed class CaptureService : IDisposable
     {
         var seconds = Math.Clamp(settings.CaptureIntervalSeconds, 15, 3600);
         Interval = TimeSpan.FromSeconds(seconds);
+        var dwellSeconds = ClientSettings.Clamp(settings.WindowFocusDwellSeconds, 0, 3600);
+        _focusDwell = TimeSpan.FromSeconds(dwellSeconds);
     }
 
     /// <summary>
@@ -350,12 +359,7 @@ public sealed class CaptureService : IDisposable
             return Task.CompletedTask;
         }
 
-        _cts = new CancellationTokenSource();
-        _loop = Task.Run(() => LoopAsync(_cts.Token));
-        AppLog.Info($"Capture timer started (every {Interval.TotalSeconds:0}s)");
-        AppLog.Debug($"CaptureService: StartAsync interval={Interval} paused={Paused}");
-        SetStatus(TrayStatusLevel.Ok, "Running",
-            $"Capture timer started (every {Interval.TotalSeconds:0}s).");
+        StartLoops();
         return Task.CompletedTask;
     }
 
@@ -363,6 +367,12 @@ public sealed class CaptureService : IDisposable
     /// Ensures the background timer loop is running (used when resuming from paused-at-startup).
     /// </summary>
     public void EnsureTimerRunning()
+    {
+        StartLoops();
+    }
+
+    /// <summary>Starts the interval loop and the focus-dwell watcher. No-op when already started.</summary>
+    private void StartLoops()
     {
         if (_cts != null)
         {
@@ -372,9 +382,14 @@ public sealed class CaptureService : IDisposable
         ApplySettings(_store.Load());
         _cts = new CancellationTokenSource();
         _loop = Task.Run(() => LoopAsync(_cts.Token));
-        AppLog.Info($"Capture timer started (every {Interval.TotalSeconds:0}s)");
+        _dwellLoop = Task.Run(() => FocusDwellLoopAsync(_cts.Token));
+        var dwellNote = _focusDwell > TimeSpan.Zero
+            ? $" Focus snapshot after {_focusDwell.TotalSeconds:0}s."
+            : "";
+        AppLog.Info($"Capture timer started (every {Interval.TotalSeconds:0}s).{dwellNote}");
+        AppLog.Debug($"CaptureService: loops interval={Interval} dwell={_focusDwell} paused={Paused}");
         SetStatus(TrayStatusLevel.Ok, "Running",
-            $"Capture timer started (every {Interval.TotalSeconds:0}s).");
+            $"Capture timer started (every {Interval.TotalSeconds:0}s).{dwellNote}");
     }
 
     /// <summary>
@@ -385,7 +400,9 @@ public sealed class CaptureService : IDisposable
         AppLog.Debug("CaptureService: Dispose");
         _cts?.Cancel();
         try { _loop?.Wait(2000); } catch { /* ignore */ }
+        try { _dwellLoop?.Wait(2000); } catch { /* ignore */ }
         _cts?.Dispose();
+        _captureGate.Dispose();
         _uploadsCts?.Cancel();
         try { _uploadsLoop?.Wait(2000); } catch { /* ignore */ }
         _uploadsCts?.Dispose();
@@ -534,7 +551,8 @@ public sealed class CaptureService : IDisposable
             {
                 if (!Paused)
                 {
-                    await CaptureAndUploadAsync(respectScreensaver: true, ct: ct).ConfigureAwait(false);
+                    await CaptureAndUploadAsync(respectScreensaver: true, ct: ct, applyWindowDedupe: true)
+                        .ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
@@ -562,80 +580,307 @@ public sealed class CaptureService : IDisposable
     /// When true, honor screensaver and idle skip policies; manual capture passes false.
     /// </param>
     /// <param name="ct">Cancellation token.</param>
-    private async Task CaptureAndUploadAsync(bool respectScreensaver, CancellationToken ct)
+    /// <param name="windowOnly">When true, capture the focused window and ignore the interval targets.</param>
+    /// <param name="expectedWindowId">Window that must still be focused when <paramref name="windowOnly"/> is set.</param>
+    /// <param name="applyWindowDedupe">
+    /// When true, skip the active-window frame if that window was snapshotted in the last few seconds.
+    /// </param>
+    /// <returns>
+    /// True when a focus-dwell session should be committed (shot taken, or a recent shot already covers it).
+    /// </returns>
+    private async Task<bool> CaptureAndUploadAsync(
+        bool respectScreensaver,
+        CancellationToken ct,
+        bool windowOnly = false,
+        long? expectedWindowId = null,
+        bool applyWindowDedupe = false)
     {
-        if (BeforeCaptureAsync is not null)
+        await _captureGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (BeforeCaptureAsync is not null)
+            {
+                try
+                {
+                    await BeforeCaptureAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("BeforeCapture hook failed: " + ex.Message);
+                }
+            }
+
+            var settings = _store.Load();
+            ApplySettings(settings);
+
+            if (!TryValidateReady(settings))
+            {
+                return false;
+            }
+
+            if (respectScreensaver)
+            {
+                if (await ShouldSkipForScreensaverAsync(settings, ct, reportStatus: !windowOnly).ConfigureAwait(false))
+                {
+                    return false;
+                }
+
+                if (await ShouldSkipForIdleAsync(settings, ct, reportStatus: !windowOnly).ConfigureAwait(false))
+                {
+                    return false;
+                }
+            }
+
+            bool captureWindow;
+            bool captureMonitors;
+            bool captureFull;
+            IReadOnlyList<int>? monitorIndexes;
+            if (windowOnly)
+            {
+                long? current = null;
+                try
+                {
+                    current = _capture.TryGetFocusedWindowId();
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Debug("Focus dwell: focused window query failed: " + ex.Message);
+                }
+
+                if (current != expectedWindowId || expectedWindowId is null or <= 0)
+                {
+                    return false;
+                }
+
+                if (_dwell.WasRecentlyCaptured(expectedWindowId.Value, DateTime.UtcNow))
+                {
+                    AppLog.Debug($"Focus dwell: window 0x{expectedWindowId.Value:x} already snapshotted");
+                    return true;
+                }
+
+                captureWindow = true;
+                captureMonitors = false;
+                captureFull = false;
+                monitorIndexes = null;
+            }
+            else if (!TryResolveCapturePlan(settings, out captureWindow, out captureMonitors,
+                    out captureFull, out monitorIndexes, out var planError))
+            {
+                SetStatus(TrayStatusLevel.Warning, "Capture targets", planError!);
+                return false;
+            }
+            else if (applyWindowDedupe && captureWindow && TrySkipRecentWindow(ref captureWindow)
+                && !captureWindow && !captureMonitors && !captureFull)
+            {
+                return false;
+            }
+
+            var modes = windowOnly
+                ? "Capturing focused window (focus snapshot)."
+                : DescribePlan(captureWindow, captureMonitors, captureFull, monitorIndexes);
+            AppLog.Info("Capture start: " + modes);
+            SetStatus(TrayStatusLevel.Info, "Capturing…", modes);
+
+            var captures = await GrabFramesAsync(captureWindow, captureMonitors, captureFull, monitorIndexes, ct)
+                .ConfigureAwait(false);
+            if (captures == null)
+            {
+                return windowOnly;
+            }
+
+            if (captures.Count == 0)
+            {
+                if (windowOnly)
+                {
+                    AppLog.Info("Focus dwell: focused window could not be captured");
+                    SetStatus(TrayStatusLevel.Warning, "Window focus",
+                        "Focused window could not be captured.");
+                    return true;
+                }
+
+                SetStatus(TrayStatusLevel.Error, "Capture failed",
+                    "Screen capture returned no images. Need an X11 session (native capture) "
+                    + "or ImageMagick import / scrot / gnome-screenshot on PATH.");
+                return false;
+            }
+
+            var captureTime = DateTimeOffset.UtcNow;
+            var encodeOpts = ResolveEncodeOptions(settings);
+            var (queued, skipped, lastError) = await EncodeAndEnqueueAllAsync(
+                captures, settings, encodeOpts, captureTime, respectScreensaver, ct).ConfigureAwait(false);
+
+            // Always enqueue first; background loop (and this kick) dequeues to the API.
+            await TryBackgroundPushAsync(ct).ConfigureAwait(false);
+
+            try { _cacheHousekeeping.Enforce(); }
+            catch (Exception ex) { AppLog.Warn("Cache: housekeeping failed: " + ex.Message); }
+
+            ReportCaptureOutcome(queued, skipped, lastError, captureTime);
+            AppLog.Info($"Capture result: queued={queued} skipped={skipped}");
+            return windowOnly;
+        }
+        finally
+        {
+            _captureGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Drops the active-window target when that window was snapshotted moments ago.
+    /// </summary>
+    /// <returns>True when the window target was suppressed.</returns>
+    private bool TrySkipRecentWindow(ref bool captureWindow)
+    {
+        if (!captureWindow)
+        {
+            return false;
+        }
+
+        long? id = null;
+        try
+        {
+            id = _capture.TryGetFocusedWindowId();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Debug("Capture: focused window query failed: " + ex.Message);
+        }
+
+        if (id is not long wid || !_dwell.WasRecentlyCaptured(wid, DateTime.UtcNow))
+        {
+            return false;
+        }
+
+        AppLog.Info($"Skipping active-window capture; window 0x{wid:x} was snapshotted recently");
+        captureWindow = false;
+        return true;
+    }
+
+    /// <summary>
+    /// While capture is running, snapshot a window that keeps focus for <see cref="_focusDwell"/>.
+    /// </summary>
+    private async Task FocusDwellLoopAsync(CancellationToken ct)
+    {
+        var poll = TimeSpan.FromMilliseconds(WindowFocusDwellTracker.PollMilliseconds);
+        var nextSettingsUtc = DateTime.MinValue;
+        while (!ct.IsCancellationRequested)
         {
             try
             {
-                await BeforeCaptureAsync().ConfigureAwait(false);
+                var now = DateTime.UtcNow;
+                if (now >= nextSettingsUtc)
+                {
+                    ApplySettings(_store.Load());
+                    nextSettingsUtc = now.AddSeconds(1);
+                }
+
+                if (Paused || _focusDwell <= TimeSpan.Zero)
+                {
+                    _dwell.Clear();
+                }
+                else
+                {
+                    await PollFocusDwellAsync(ct).ConfigureAwait(false);
+                }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                AppLog.Warn("BeforeCapture hook failed: " + ex.Message);
+                AppLog.Warn("Focus dwell loop: " + ex.Message);
+            }
+
+            try
+            {
+                // Because a disabled or paused watcher only needs to notice settings changes, not focus.
+                var delay = !Paused && _focusDwell > TimeSpan.Zero
+                    ? poll
+                    : TimeSpan.FromSeconds(1);
+                await Task.Delay(delay, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
         }
+    }
 
+    /// <summary>One focus sample. Captures when the current window has been focused long enough.</summary>
+    private async Task PollFocusDwellAsync(CancellationToken ct)
+    {
         var settings = _store.Load();
-        ApplySettings(settings);
+        if (!HasIdentity(settings))
+        {
+            _dwell.Clear();
+            return;
+        }
 
-        if (!TryValidateReady(settings))
+        if (await IsDwellBlockedAsync(settings, ct).ConfigureAwait(false))
+        {
+            _dwell.Clear();
+            return;
+        }
+
+        long? id = null;
+        try
+        {
+            id = _capture.TryGetFocusedWindowId();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Debug("Focus dwell: focused window query failed: " + ex.Message);
+        }
+
+        var now = DateTime.UtcNow;
+        // Because a null id must still be observed so time spent on the desktop does not count toward the previous window.
+        if (!_dwell.IsDue(id, now, _focusDwell) || id is null)
         {
             return;
         }
 
-        if (respectScreensaver)
+        if (_dwell.WasRecentlyCaptured(id.Value, now))
         {
-            if (await ShouldSkipForScreensaverAsync(settings, ct).ConfigureAwait(false))
-            {
-                return;
-            }
-
-            if (await ShouldSkipForIdleAsync(settings, ct).ConfigureAwait(false))
-            {
-                return;
-            }
-        }
-
-        if (!TryResolveCapturePlan(settings, out var captureWindow, out var captureMonitors,
-                out var captureFull, out var monitorIndexes, out var planError))
-        {
-            SetStatus(TrayStatusLevel.Warning, "Capture targets", planError!);
+            _dwell.Commit(id.Value, now);
             return;
         }
 
-        var modes = DescribePlan(captureWindow, captureMonitors, captureFull, monitorIndexes);
-        AppLog.Info("Capture start: " + modes);
-        SetStatus(TrayStatusLevel.Info, "Capturing…", modes);
-
-        var captures = await GrabFramesAsync(captureWindow, captureMonitors, captureFull, monitorIndexes, ct)
-            .ConfigureAwait(false);
-        if (captures == null)
+        var commit = await CaptureAndUploadAsync(
+            respectScreensaver: true,
+            ct: ct,
+            windowOnly: true,
+            expectedWindowId: id,
+            applyWindowDedupe: false).ConfigureAwait(false);
+        if (commit)
         {
-            return;
+            _dwell.Commit(id.Value, DateTime.UtcNow);
+        }
+    }
+
+    /// <summary>True when login and a default machine are present, without updating tray status.</summary>
+    private bool HasIdentity(ClientSettings settings)
+    {
+        if (!settings.MachineId.HasValue)
+        {
+            return false;
         }
 
-        if (captures.Count == 0)
+        return !string.IsNullOrEmpty(_store.LoadToken())
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SCHNAPP_TOKEN"));
+    }
+
+    /// <summary>
+    /// Screensaver and idle checks for the dwell watcher, refreshed every couple of seconds.
+    /// </summary>
+    private async Task<bool> IsDwellBlockedAsync(ClientSettings settings, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        if (now < _nextDwellBlockCheckUtc)
         {
-            SetStatus(TrayStatusLevel.Error, "Capture failed",
-                "Screen capture returned no images. Need an X11 session (native capture) "
-                + "or ImageMagick import / scrot / gnome-screenshot on PATH.");
-            return;
+            return _dwellBlocked;
         }
 
-        var captureTime = DateTimeOffset.UtcNow;
-        var encodeOpts = ResolveEncodeOptions(settings);
-        var (queued, skipped, lastError) = await EncodeAndEnqueueAllAsync(
-            captures, settings, encodeOpts, captureTime, respectScreensaver, ct).ConfigureAwait(false);
-
-        // Always enqueue first; background loop (and this kick) dequeues to the API.
-        await TryBackgroundPushAsync(ct).ConfigureAwait(false);
-
-        try { _cacheHousekeeping.Enforce(); }
-        catch (Exception ex) { AppLog.Warn("Cache: housekeeping failed: " + ex.Message); }
-
-        ReportCaptureOutcome(queued, skipped, lastError, captureTime);
-        AppLog.Info($"Capture result: queued={queued} skipped={skipped}");
+        _nextDwellBlockCheckUtc = now.AddSeconds(2);
+        _dwellBlocked = await ShouldSkipForScreensaverAsync(settings, ct, reportStatus: false).ConfigureAwait(false)
+            || await ShouldSkipForIdleAsync(settings, ct, reportStatus: false).ConfigureAwait(false);
+        return _dwellBlocked;
     }
 
     /// <summary>
@@ -668,7 +913,10 @@ public sealed class CaptureService : IDisposable
     /// </summary>
     /// <param name="settings">Settings including <see cref="ClientSettings.SkipWhenScreensaverActive"/>.</param>
     /// <param name="ct">Cancellation token.</param>
-    private async Task<bool> ShouldSkipForScreensaverAsync(ClientSettings settings, CancellationToken ct)
+    private async Task<bool> ShouldSkipForScreensaverAsync(
+        ClientSettings settings,
+        CancellationToken ct,
+        bool reportStatus = true)
     {
         if (!settings.SkipWhenScreensaverActive)
         {
@@ -683,8 +931,12 @@ public sealed class CaptureService : IDisposable
             }
 
             AppLog.Debug("Screensaver active; skipping capture");
-            SetStatus(TrayStatusLevel.Info, "Screensaver",
-                "Skipped capture while screensaver is active.");
+            if (reportStatus)
+            {
+                SetStatus(TrayStatusLevel.Info, "Screensaver",
+                    "Skipped capture while screensaver is active.");
+            }
+
             return true;
         }
         catch
@@ -699,7 +951,10 @@ public sealed class CaptureService : IDisposable
     /// </summary>
     /// <param name="settings">Settings including idle pause minutes (0 = disabled).</param>
     /// <param name="ct">Cancellation token.</param>
-    private async Task<bool> ShouldSkipForIdleAsync(ClientSettings settings, CancellationToken ct)
+    private async Task<bool> ShouldSkipForIdleAsync(
+        ClientSettings settings,
+        CancellationToken ct,
+        bool reportStatus = true)
     {
         var minutes = ClientSettings.Clamp(settings.IdlePauseMinutes, 0, 1440);
         if (minutes <= 0)
@@ -722,8 +977,12 @@ public sealed class CaptureService : IDisposable
             }
 
             AppLog.Debug($"User idle {idle.Value.TotalMinutes:F1}m >= {minutes}m; skipping capture");
-            SetStatus(TrayStatusLevel.Info, "Idle",
-                $"Skipped capture: no user activity for {minutes} minute(s).");
+            if (reportStatus)
+            {
+                SetStatus(TrayStatusLevel.Info, "Idle",
+                    $"Skipped capture: no user activity for {minutes} minute(s).");
+            }
+
             return true;
         }
         catch
@@ -855,11 +1114,17 @@ public sealed class CaptureService : IDisposable
         foreach (var cap in captures)
         {
             ct.ThrowIfCancellationRequested();
+            var nativeWindowId = cap.NativeWindowId;
+            var captureType = cap.CaptureType;
             var outcome = await EncodeAndEnqueueOneAsync(cap, settings, opts, captureTime, allowSkip, ct)
                 .ConfigureAwait(false);
             if (outcome.Queued)
             {
                 queued++;
+                if (captureType == "Window" && nativeWindowId is long wid)
+                {
+                    _dwell.NoteCaptured(wid, DateTime.UtcNow);
+                }
             }
 
             if (outcome.Skipped)

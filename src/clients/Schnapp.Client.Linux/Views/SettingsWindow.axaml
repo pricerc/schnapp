@@ -23,6 +23,9 @@
             <TextBlock Text="Pause capture after idle (minutes; 0 = off)"/>
             <NumericUpDown x:Name="IdlePauseBox" Minimum="0" Maximum="1440" Value="0"
                            Width="200" HorizontalAlignment="Left" />
+            <TextBlock Text="Snapshot focused window after (seconds; 0 = off)"/>
+            <NumericUpDown x:Name="FocusDwellBox" Minimum="0" Maximum="3600" Value="0"
+                           Width="200" HorizontalAlignment="Left" />
             <CheckBox x:Name="DiscardBlankBox" Content="Discard blank (all-black) captures"/>
             <CheckBox x:Name="DiscardIdleBox" Content="Discard idle duplicates (almost-unchanged screen)"/>
             <TextBlock Text="Idle duplicate tolerance (dirty cells; 1–20, default 2)"/>

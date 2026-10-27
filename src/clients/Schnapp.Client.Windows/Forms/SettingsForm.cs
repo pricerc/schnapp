@@ -53,6 +53,7 @@ public partial class SettingsForm : Form
         IntervalBox.Value = Math.Max(IntervalBox.Minimum, Math.Min(IntervalBox.Maximum, s.CaptureIntervalSeconds));
         SkipScreensaverBox.Checked = s.SkipWhenScreensaverActive;
         IdlePauseBox.Value = Math.Max(IdlePauseBox.Minimum, Math.Min(IdlePauseBox.Maximum, s.IdlePauseMinutes));
+        FocusDwellBox.Value = Math.Max(FocusDwellBox.Minimum, Math.Min(FocusDwellBox.Maximum, s.WindowFocusDwellSeconds));
         DiscardBlankBox.Checked = s.DiscardBlankDuplicates;
         DiscardIdleBox.Checked = s.DiscardIdleDuplicates;
         IdleDirtyCellsBox.Value = Math.Max(IdleDirtyCellsBox.Minimum, Math.Min(IdleDirtyCellsBox.Maximum, s.IdleMaxDirtyCells));
@@ -193,6 +194,7 @@ public partial class SettingsForm : Form
         s.CaptureIntervalSeconds = (int)IntervalBox.Value;
         s.SkipWhenScreensaverActive = SkipScreensaverBox.Checked;
         s.IdlePauseMinutes = (int)IdlePauseBox.Value;
+        s.WindowFocusDwellSeconds = (int)FocusDwellBox.Value;
         s.DiscardBlankDuplicates = DiscardBlankBox.Checked;
         s.DiscardIdleDuplicates = DiscardIdleBox.Checked;
         s.IdleMaxDirtyCells = (int)IdleDirtyCellsBox.Value;

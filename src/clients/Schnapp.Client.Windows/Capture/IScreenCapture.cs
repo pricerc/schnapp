@@ -44,6 +44,13 @@ public interface IScreenCapture
     double GetDesktopAutoScale();
 
     /// <summary>
+    /// Id of the focused top-level window to arm the focus-dwell snapshot.
+    /// Null when there is no window, it belongs to this process, it is the shell/desktop, or it is too small.
+    /// </summary>
+    /// <returns>HWND as a 64-bit id, or null.</returns>
+    long? TryGetFocusedWindowId();
+
+    /// <summary>
     /// Captures enabled targets (any combination). Prefer bulk grab so timestamps stay close.
     /// </summary>
     /// <param name="captureWindow">Active/focused window.</param>

@@ -36,6 +36,9 @@ public sealed class ScreenCaptureResult : IDisposable
     /// <summary>Active program/class name for window captures, if available.</summary>
     public string? ProgramName { get; init; }
 
+    /// <summary>X11 window id when <see cref="CaptureType"/> is Window.</summary>
+    public long? NativeWindowId { get; init; }
+
     /// <summary>Short human description used in notes/UI defaults.</summary>
     public string? Description { get; init; }
 

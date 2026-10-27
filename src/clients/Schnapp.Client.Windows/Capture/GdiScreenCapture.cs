@@ -80,6 +80,54 @@ public sealed class GdiScreenCapture : IScreenCapture, IDisposable
     public double GetDesktopAutoScale() => 1.0;
 
     /// <inheritdoc />
+    public long? TryGetFocusedWindowId()
+    {
+        var hwnd = GetForegroundWindow();
+        if (hwnd == IntPtr.Zero || IsOwnProcess(hwnd) || IsShellWindow(hwnd))
+        {
+            return null;
+        }
+
+        if (!GetWindowRect(hwnd, out var rect))
+        {
+            return null;
+        }
+
+        var width = rect.Right - rect.Left;
+        var height = rect.Bottom - rect.Top;
+        // Because menus, tooltips, and thumbnail previews are not windows worth a snapshot.
+        if (width < 32 || height < 32)
+        {
+            return null;
+        }
+
+        return hwnd.ToInt64();
+    }
+
+    /// <summary>True when this process owns <paramref name="hwnd"/>.</summary>
+    private static bool IsOwnProcess(IntPtr hwnd)
+    {
+        GetWindowThreadProcessId(hwnd, out var pid);
+        return pid != 0 && pid == (uint)Process.GetCurrentProcess().Id;
+    }
+
+    /// <summary>True for the desktop and taskbar, which are not useful focus snapshots.</summary>
+    private static bool IsShellWindow(IntPtr hwnd)
+    {
+        var sb = new StringBuilder(256);
+        if (GetClassName(hwnd, sb, sb.Capacity) <= 0)
+        {
+            return false;
+        }
+
+        var name = sb.ToString();
+        return name == "Progman"
+            || name == "WorkerW"
+            || name == "Shell_TrayWnd"
+            || name == "Shell_SecondaryTrayWnd";
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<ScreenCaptureResult>> CaptureAsync(
         bool captureWindow,
         bool captureMonitors,
@@ -273,6 +321,7 @@ public sealed class GdiScreenCapture : IScreenCapture, IDisposable
             MonitorName = monitorIndex >= 0 ? GetMonitorName(monitorIndex) : null,
             WindowTitle = title,
             ProgramName = program,
+            NativeWindowId = hwnd.ToInt64(),
             Description = string.IsNullOrEmpty(title) ? program : title
         };
     }
@@ -408,6 +457,10 @@ public sealed class GdiScreenCapture : IScreenCapture, IDisposable
     /// <summary>Gets the process id that owns the window.</summary>
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    /// <summary>Reads the window class name.</summary>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
 
     /// <summary>Renders a window into a device context (used for DWM/layered windows).</summary>
     [DllImport("user32.dll")]

@@ -40,6 +40,12 @@ public sealed class ClientSettings
     public int CaptureIntervalSeconds { get; set; } = 300;
 
     /// <summary>
+    /// Snapshot the focused window once it has kept focus this many seconds.
+    /// 0 = off. Independent of <see cref="CaptureActiveWindow"/> and the interval timer.
+    /// </summary>
+    public int WindowFocusDwellSeconds { get; set; }
+
+    /// <summary>
     /// When true, the capture timer was running (not paused) when the app last saved settings.
     /// On startup the tray client auto-starts capture only if this is true.
     /// </summary>
@@ -93,6 +99,8 @@ public sealed class ClientSettings
         {
             CaptureFullDesktop = true;
         }
+
+        WindowFocusDwellSeconds = Clamp(WindowFocusDwellSeconds, 0, 3600);
 
         if (MonitorSettings != null)
         {

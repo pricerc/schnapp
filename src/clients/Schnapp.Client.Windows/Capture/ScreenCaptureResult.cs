@@ -35,6 +35,9 @@ public sealed class ScreenCaptureResult : IDisposable
     /// <summary>Active program/class name for window captures, if available.</summary>
     public string? ProgramName { get; set; }
 
+    /// <summary>Foreground HWND when <see cref="CaptureType"/> is Window.</summary>
+    public long? NativeWindowId { get; set; }
+
     /// <summary>Short human description used in notes/UI defaults.</summary>
     public string? Description { get; set; }
 

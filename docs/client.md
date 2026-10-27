@@ -58,6 +58,8 @@ timer / Capture now
 
 Also: interval (min 15s), skip when screensaver is on (timer only), pause after idle minutes (timer only; 0 = off; keyboard/mouse inactivity), per-monitor quality/scale overrides.
 
+**Window focus snapshot** (`windowFocusDwellSeconds`, default 0 = off): while capture is running, one snapshot of a top-level window after it stays focused for that many seconds. A new focus session (leave and return) arms it again. Schnapp's own windows and the desktop/shell are skipped. The same screensaver and idle rules as the timer apply. If the interval timer also captured that window within 5 seconds, the extra window frame is skipped.
+
 ### Output scale steps (`MonitorScaling`)
 
 Both trays share the same scale-step algorithm (duplicated under each client’s `Capture/MonitorScaling.cs`):

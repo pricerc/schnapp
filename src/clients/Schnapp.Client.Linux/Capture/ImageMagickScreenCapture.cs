@@ -45,6 +45,9 @@ public sealed class ImageMagickScreenCapture : IScreenCapture
     public double GetDesktopAutoScale() => 1.0;
 
     /// <inheritdoc />
+    public long? TryGetFocusedWindowId() => null;
+
+    /// <inheritdoc />
     /// <remarks>Only full-desktop via external tools; window/monitor flags are ignored.</remarks>
     public async Task<IReadOnlyList<ScreenCaptureResult>> CaptureAsync(
         bool captureWindow,
@@ -223,6 +226,10 @@ public sealed class CompositeScreenCapture : IScreenCapture, IDisposable
     /// <inheritdoc />
     public double GetDesktopAutoScale() =>
         _x11?.GetDesktopAutoScale() ?? _screenInfo.GetDesktopAutoScale();
+
+    /// <inheritdoc />
+    public long? TryGetFocusedWindowId() =>
+        _x11 is { IsAvailable: true } ? _x11.TryGetFocusedWindowId() : null;
 
     /// <inheritdoc />
     public Task<IReadOnlyList<ScreenCaptureResult>> CaptureAsync(

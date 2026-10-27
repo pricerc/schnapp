@@ -32,6 +32,8 @@ namespace Schnapp.Client.Windows.Forms
             this.SkipScreensaverBox = new System.Windows.Forms.CheckBox();
             this.IdlePauseLabel = new System.Windows.Forms.Label();
             this.IdlePauseBox = new System.Windows.Forms.NumericUpDown();
+            this.FocusDwellLabel = new System.Windows.Forms.Label();
+            this.FocusDwellBox = new System.Windows.Forms.NumericUpDown();
             this.DiscardBlankBox = new System.Windows.Forms.CheckBox();
             this.DiscardIdleBox = new System.Windows.Forms.CheckBox();
             this.IdleDirtyCellsLabel = new System.Windows.Forms.Label();
@@ -57,6 +59,7 @@ namespace Schnapp.Client.Windows.Forms
             this.CaptureLayout.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.IntervalBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.IdlePauseBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.FocusDwellBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.IdleDirtyCellsBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.QualityBox)).BeginInit();
             this.PathsTab.SuspendLayout();
@@ -103,6 +106,8 @@ namespace Schnapp.Client.Windows.Forms
             this.CaptureLayout.Controls.Add(this.CaptureMonitorsBox, 0, 10);
             this.CaptureLayout.Controls.Add(this.IdlePauseLabel, 0, 1);
             this.CaptureLayout.Controls.Add(this.IdlePauseBox, 1, 1);
+            this.CaptureLayout.Controls.Add(this.FocusDwellLabel, 0, 9);
+            this.CaptureLayout.Controls.Add(this.FocusDwellBox, 1, 9);
             this.CaptureLayout.Controls.Add(this.DiscardBlankBox, 2, 1);
             this.CaptureLayout.Controls.Add(this.DiscardIdleBox, 2, 2);
             this.CaptureLayout.Controls.Add(this.IdleDirtyCellsLabel, 0, 2);
@@ -282,6 +287,27 @@ namespace Schnapp.Client.Windows.Forms
             this.IdlePauseBox.Name = "IdlePauseBox";
             this.IdlePauseBox.Size = new System.Drawing.Size(84, 20);
             this.IdlePauseBox.TabIndex = 15;
+            // 
+            // FocusDwellLabel
+            // 
+            this.FocusDwellLabel.AutoSize = true;
+            this.FocusDwellLabel.Location = new System.Drawing.Point(3, 200);
+            this.FocusDwellLabel.Name = "FocusDwellLabel";
+            this.FocusDwellLabel.Size = new System.Drawing.Size(168, 13);
+            this.FocusDwellLabel.TabIndex = 16;
+            this.FocusDwellLabel.Text = "Focus snapshot (seconds; 0 = off)";
+            // 
+            // FocusDwellBox
+            // 
+            this.FocusDwellBox.Location = new System.Drawing.Point(183, 200);
+            this.FocusDwellBox.Maximum = new decimal(new int[] {
+            3600,
+            0,
+            0,
+            0});
+            this.FocusDwellBox.Name = "FocusDwellBox";
+            this.FocusDwellBox.Size = new System.Drawing.Size(84, 20);
+            this.FocusDwellBox.TabIndex = 17;
             // 
             // DiscardBlankBox
             // 
@@ -516,6 +542,7 @@ namespace Schnapp.Client.Windows.Forms
             this.CaptureLayout.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.IntervalBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.IdlePauseBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.FocusDwellBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.IdleDirtyCellsBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.QualityBox)).EndInit();
             this.PathsTab.ResumeLayout(false);
@@ -534,6 +561,8 @@ namespace Schnapp.Client.Windows.Forms
         private System.Windows.Forms.CheckBox SkipScreensaverBox;
         private System.Windows.Forms.Label IdlePauseLabel;
         private System.Windows.Forms.NumericUpDown IdlePauseBox;
+        private System.Windows.Forms.Label FocusDwellLabel;
+        private System.Windows.Forms.NumericUpDown FocusDwellBox;
         private System.Windows.Forms.CheckBox DiscardBlankBox;
         private System.Windows.Forms.CheckBox DiscardIdleBox;
         private System.Windows.Forms.Label IdleDirtyCellsLabel;

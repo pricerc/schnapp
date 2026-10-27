@@ -34,6 +34,7 @@ public sealed class X11ScreenCapture : IScreenCapture, IDisposable
         public string? MonitorName { get; set; }
         public string? WindowTitle { get; set; }
         public string? ProgramName { get; set; }
+        public long? NativeWindowId { get; set; }
         public string Description { get; set; } = "Screenshot";
         public Dictionary<string, string> Metadata { get; set; } = [];
     }
@@ -66,6 +67,95 @@ public sealed class X11ScreenCapture : IScreenCapture, IDisposable
 
     /// <inheritdoc />
     public double GetDesktopAutoScale() => _screenInfo.GetDesktopAutoScale();
+
+    /// <inheritdoc />
+    public long? TryGetFocusedWindowId()
+    {
+        if (!X11Native.IsAvailable)
+        {
+            return null;
+        }
+
+        var display = X11Native.Display;
+        var windowId = GetActiveWindow(display, log: false);
+        if (windowId == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        lock (X11Native.Sync)
+        {
+            try
+            {
+                var root = X11Native.DefaultRootWindow(display);
+                if (windowId == root)
+                {
+                    return null;
+                }
+
+                var attrs = new X11Native.XWindowAttributes();
+                if (X11Native.XGetWindowAttributes(display, windowId, ref attrs) == 0
+                    || attrs.width < 32
+                    || attrs.height < 32)
+                {
+                    return null;
+                }
+
+                if (IsOwnProcess(display, windowId))
+                {
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Debug("X11: TryGetFocusedWindowId: " + ex.Message);
+                return null;
+            }
+        }
+
+        return windowId.ToInt64();
+    }
+
+    /// <summary>
+    /// True when <paramref name="window"/> publishes this process as <c>_NET_WM_PID</c>.
+    /// Windows without the property are still eligible.
+    /// </summary>
+    private static bool IsOwnProcess(IntPtr display, IntPtr window)
+    {
+        var atom = X11Native.XInternAtom(display, "_NET_WM_PID", false);
+        IntPtr prop = IntPtr.Zero;
+        var result = X11Native.XGetWindowProperty(
+            display,
+            window,
+            atom,
+            0,
+            1,
+            false,
+            IntPtr.Zero,
+            out _,
+            out var format,
+            out var nItems,
+            out _,
+            ref prop);
+        try
+        {
+            if (result != 0 || prop == IntPtr.Zero || nItems < 1 || format != 32)
+            {
+                return false;
+            }
+
+            // Because a 32-bit CARDINAL is stored in a native long; the low 32 bits are the pid.
+            var pid = Marshal.ReadInt32(prop);
+            return pid > 0 && pid == Environment.ProcessId;
+        }
+        finally
+        {
+            if (prop != IntPtr.Zero)
+            {
+                _ = X11Native.XFree(prop);
+            }
+        }
+    }
 
     /// <summary>Releases the capture throttle gate.</summary>
     public void Dispose()
@@ -188,6 +278,7 @@ public sealed class X11ScreenCapture : IScreenCapture, IDisposable
                     MonitorName = raw.MonitorName,
                     WindowTitle = raw.WindowTitle,
                     ProgramName = raw.ProgramName,
+                    NativeWindowId = raw.NativeWindowId,
                     Description = raw.Description,
                     Metadata = raw.Metadata
                 };
@@ -256,6 +347,7 @@ public sealed class X11ScreenCapture : IScreenCapture, IDisposable
 
         var (name, className) = GetWindowInfo(display, windowId);
         raw.CaptureType = "Window";
+        raw.NativeWindowId = windowId.ToInt64();
         raw.WindowTitle = name;
         raw.ProgramName = className;
         raw.Description = name ?? "Active window";
@@ -436,7 +528,7 @@ public sealed class X11ScreenCapture : IScreenCapture, IDisposable
     /// </summary>
     /// <param name="display">The X11 display pointer.</param>
     /// <returns>The handle of the currently active X11 window, or <see cref="IntPtr.Zero"/> if none is active.</returns>
-    private static IntPtr GetActiveWindow(IntPtr display)
+    private static IntPtr GetActiveWindow(IntPtr display, bool log = true)
     {
         if (display == IntPtr.Zero)
         {
@@ -465,13 +557,19 @@ public sealed class X11ScreenCapture : IScreenCapture, IDisposable
                     out _,
                     ref prop);
 
-                AppLog.Debug($"X11: _NET_ACTIVE_WINDOW atom={atom:x} result={result} nItems={nItems}");
+                if (log)
+                {
+                    AppLog.Debug($"X11: _NET_ACTIVE_WINDOW atom={atom:x} result={result} nItems={nItems}");
+                }
 
                 if (result == 0 && prop != IntPtr.Zero && nItems > 0)
                 {
                     var windowId = Marshal.ReadIntPtr(prop);
                     _ = X11Native.XFree(prop);
-                    AppLog.Debug($"X11: active window from prop=0x{windowId.ToInt64():x}");
+                    if (log)
+                    {
+                        AppLog.Debug($"X11: active window from prop=0x{windowId.ToInt64():x}");
+                    }
                     return windowId;
                 }
 
