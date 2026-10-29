@@ -1,10 +1,13 @@
+namespace Schnapp.Data.Repositories;
+
 using Dapper;
+
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Domain;
 using Schnapp.Domain.Entities;
 
 using Medo;
-namespace Schnapp.Data.Repositories;
 
 /// <summary>
 /// CRUD for org-global customers, projects, tasks, journal targets, tags, and entity statuses.

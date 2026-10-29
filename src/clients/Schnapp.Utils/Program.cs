@@ -1,6 +1,6 @@
-using Schnapp.Data;
-
 namespace Schnapp.Utils;
+
+using Schnapp.Data;
 
 internal static class Program
 {

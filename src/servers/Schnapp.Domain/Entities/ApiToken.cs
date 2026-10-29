@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain.Entities;
+
+using Medo;
 
 /// <summary>
 /// Persisted API bearer token for a user. Only the hash is stored; plaintext is shown once at creation.

@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain.Entities;
+
+using Medo;
 
 /// <summary>
 /// Association between a user and a machine (registration, per-user display name, client prefs).

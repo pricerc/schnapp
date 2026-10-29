@@ -1,15 +1,19 @@
+namespace Schnapp.Utils;
+
 using System.Text.Json;
+
 using Medo;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Contracts;
 using Schnapp.Data;
 using Schnapp.Data.Repositories;
 using Schnapp.Imaging;
+
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-
-namespace Schnapp.Utils;
 
 /// <summary>
 /// Fingerprints catalog screenshots (storing missing fingerprints back to the DB) and lists

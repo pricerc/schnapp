@@ -1,10 +1,11 @@
+namespace Schnapp.Utils;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Contracts;
 using Schnapp.Data;
 using Schnapp.Data.Repositories;
-
-namespace Schnapp.Utils;
 
 /// <summary>Loads idle-scan frames from server blob storage using the catalog.</summary>
 internal static class BlobCatalog

@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain.Entities;
+
+using Medo;
 
 /// <summary>
 /// Application user account (login identity, role, and profile fields).

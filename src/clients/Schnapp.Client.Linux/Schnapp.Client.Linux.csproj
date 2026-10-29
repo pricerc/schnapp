@@ -9,7 +9,7 @@
     <RootNamespace>Schnapp.Client.Linux</RootNamespace>
     <AssemblyName>schnapp-client-linux</AssemblyName>
     <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
-    <Platforms>x64</Platforms>
+    <Platforms>x64;AnyCPU</Platforms>
 		<Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Version>
 		<AssemblyVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HH"))</AssemblyVersion>
 		<AssemblyFileVersion>$([System.DateTime]::UtcNow.ToString("yy.MM.dd.HHmm"))</AssemblyFileVersion>

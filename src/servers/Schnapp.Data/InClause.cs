@@ -1,7 +1,8 @@
-using Dapper;
-using Medo;
-
 namespace Schnapp.Data;
+
+using Dapper;
+
+using Medo;
 
 /// <summary>
 /// Builds <c>(@p0, @p1, …)</c> lists for <see cref="Uuid7"/> values. Dapper's own list expansion

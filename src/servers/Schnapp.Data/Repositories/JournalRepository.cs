@@ -1,10 +1,14 @@
+namespace Schnapp.Data.Repositories;
+
 using System.Data;
+
 using Dapper;
+
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Domain.Entities;
 
 using Medo;
-namespace Schnapp.Data.Repositories;
 
 /// <summary>
 /// Dapper access for <c>journal_entry</c> (list, open lookup, insert, close, update).

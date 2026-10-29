@@ -1,8 +1,10 @@
-using Dapper;
-using Microsoft.Extensions.Logging;
-using Schnapp.Domain.Entities;
-
 namespace Schnapp.Data.Repositories;
+
+using Dapper;
+
+using Microsoft.Extensions.Logging;
+
+using Schnapp.Domain.Entities;
 
 /// <summary>
 /// Org key/value settings stored in the <c>setting</c> table.

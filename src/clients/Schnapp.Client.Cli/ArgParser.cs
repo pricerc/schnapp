@@ -149,37 +149,17 @@ public static class ArgParser
         }
 
         key = key.Trim().ToLowerInvariant();
-        if (key == "pass" || key == "p")
-        {
-            return "password";
-        }
 
-        if (key == "note" || key == "n")
+        return key switch
         {
-            return "notes";
-        }
-
-        if (key == "tag" || key == "t")
-        {
-            return "tags";
-        }
-
-        if (key == "mon")
-        {
-            return "monitor";
-        }
-
-        if (key == "m")
-        {
-            return "machine";
-        }
-
-        if (key == "api")
-        {
-            return "server";
-        }
-
-        return key;
+            "pass" or "p" => "password",
+            "note" or "n" => "notes",
+            "tag" or "t" => "tags",
+            "mon" => "monitor",
+            "m" => "machine",
+            "api" => "server",
+            _ => key,
+        };
     }
 
     private static bool LooksLikeKey(string a)

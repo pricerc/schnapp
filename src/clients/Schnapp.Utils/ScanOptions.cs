@@ -1,6 +1,6 @@
-using Schnapp.Data;
-
 namespace Schnapp.Utils;
+
+using Schnapp.Data;
 
 /// <summary>CLI options for idle-scan (local spool or server blobs).</summary>
 internal sealed record ScanOptions

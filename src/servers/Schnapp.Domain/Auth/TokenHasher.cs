@@ -1,7 +1,7 @@
+namespace Schnapp.Domain.Auth;
+
 using System.Security.Cryptography;
 using System.Text;
-
-namespace Schnapp.Domain.Auth;
 
 /// <summary>
 /// Creates and hashes opaque API bearer tokens without depending on ASP.NET types.

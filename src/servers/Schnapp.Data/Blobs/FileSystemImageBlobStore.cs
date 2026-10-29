@@ -1,6 +1,6 @@
-using Microsoft.Extensions.Logging;
-
 namespace Schnapp.Data.Blobs;
+
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Filesystem implementation of <see cref="IImageBlobStore"/> under a configured root directory.

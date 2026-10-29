@@ -1,10 +1,14 @@
-using System.Data;
-using Dapper;
-using FirebirdSql.Data.FirebirdClient;
-using Npgsql;
-using NpgsqlTypes;
-
 namespace Schnapp.Data;
+
+using System.Data;
+
+using Dapper;
+
+using FirebirdSql.Data.FirebirdClient;
+
+using Npgsql;
+
+using NpgsqlTypes;
 
 /// <summary>
 /// Dapper mapping for instants stored as UTC at rest.

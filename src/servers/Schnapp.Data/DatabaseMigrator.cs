@@ -1,8 +1,10 @@
-using System.Reflection;
-using DbUp;
-using Microsoft.Extensions.Logging;
-
 namespace Schnapp.Data;
+
+using System.Reflection;
+
+using DbUp;
+
+using Microsoft.Extensions.Logging;
 
 /// <summary>
 /// Applies embedded SQL migrations (DbUp) for the selected <see cref="DatabaseProvider"/>.

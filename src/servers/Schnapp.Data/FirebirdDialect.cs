@@ -1,6 +1,6 @@
-using FirebirdSql.Data.FirebirdClient;
-
 namespace Schnapp.Data;
+
+using FirebirdSql.Data.FirebirdClient;
 
 /// <summary>Firebird 5 fragments and FbException mapping.</summary>
 public sealed class FirebirdDialect : IDatabaseDialect

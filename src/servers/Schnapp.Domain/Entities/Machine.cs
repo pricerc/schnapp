@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain.Entities;
+
+using Medo;
 
 /// <summary>
 /// Physical or virtual workstation that captures screenshots and hosts journal activity.

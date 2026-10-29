@@ -15,7 +15,7 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Deterministic>true</Deterministic>
     <!-- SQLitePCL / e_sqlite3 native package rejects AnyCPU; prefer x64 for modern Windows. -->
-    <Platforms>x64</Platforms>
+    <Platforms>x64;AnyCPU</Platforms>
     <Platform>x64</Platform>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
@@ -72,10 +72,7 @@
     <ItemGroup Condition="Exists('$(_WebPNativeDir)')">
       <_WebPNativeFiles Include="$(_WebPNativeDir)*.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(_WebPNativeFiles)"
-          DestinationFolder="$(OutputPath)"
-          SkipUnchangedFiles="true"
-          Condition="'@(_WebPNativeFiles)' != ''" />
+    <Copy SourceFiles="@(_WebPNativeFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" Condition="'@(_WebPNativeFiles)' != ''" />
   </Target>
 
   <Target Name="CopyWebPNativesFlatPublish" AfterTargets="Publish">
@@ -85,9 +82,6 @@
     <ItemGroup Condition="Exists('$(_WebPNativeDir)')">
       <_WebPNativeFiles Include="$(_WebPNativeDir)*.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(_WebPNativeFiles)"
-          DestinationFolder="$(PublishDir)"
-          SkipUnchangedFiles="true"
-          Condition="'@(_WebPNativeFiles)' != '' And '$(PublishDir)' != ''" />
+    <Copy SourceFiles="@(_WebPNativeFiles)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" Condition="'@(_WebPNativeFiles)' != '' And '$(PublishDir)' != ''" />
   </Target>
 </Project>

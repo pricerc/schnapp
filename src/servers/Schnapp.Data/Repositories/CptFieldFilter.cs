@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Data.Repositories;
+
+using Medo;
 
 /// <summary>
 /// Optional include or exclude constraint on a customer, project, or task field.

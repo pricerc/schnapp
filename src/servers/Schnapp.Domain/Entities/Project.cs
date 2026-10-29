@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain.Entities;
+
+using Medo;
 
 /// <summary>
 /// Project under a customer in the shared list hierarchy used by journal targets.

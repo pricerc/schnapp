@@ -1,12 +1,17 @@
+namespace Schnapp.Data;
+
 using System;
 using System.Data;
-using Dapper;
-using FirebirdSql.Data.FirebirdClient;
-using Medo;
-using Npgsql;
-using NpgsqlTypes;
 
-namespace Schnapp.Data;
+using Dapper;
+
+using FirebirdSql.Data.FirebirdClient;
+
+using Medo;
+
+using Npgsql;
+
+using NpgsqlTypes;
 
 /// <summary>
 /// Dapper mapping for <see cref="Uuid7"/> using RFC network byte order (PG uuid, Firebird BINARY(16)).

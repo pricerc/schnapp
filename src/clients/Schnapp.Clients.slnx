@@ -1,41 +1,42 @@
 <Solution>
   <Configurations>
+    <Platform Name="Any CPU" />
     <Platform Name="x64" />
   </Configurations>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
   </Folder>
   <Project Path="../../tests/Schnapp.Client.Core.Tests/Schnapp.Client.Core.Tests.csproj">
-    <Platform Project="x64" />
+    <Platform Solution="*|x64" Project="x64" />
   </Project>
   <Project Path="../common/Schnapp.Contracts/Schnapp.Contracts.csproj">
-    <Platform Project="x64" />
-  </Project>
-  <Project Path="Schnapp.Client.Cli/Schnapp.Client.Cli.csproj">
-    <Platform Project="x64" />
-  </Project>
-  <Project Path="Schnapp.Client.Core/Schnapp.Client.Core.csproj">
-    <Platform Project="x64" />
-  </Project>
-  <Project Path="Schnapp.Client.Linux/Schnapp.Client.Linux.csproj">
-    <Platform Project="x64" />
-  </Project>
-  <Project Path="Schnapp.Client.Windows/Schnapp.Client.Windows.csproj">
-    <Platform Project="x64" />
-  </Project>
-  <Project Path="Schnapp.Utils/Schnapp.Utils.csproj">
-    <Platform Project="x64" />
+    <Platform Solution="*|x64" Project="x64" />
   </Project>
   <Project Path="../common/Schnapp.Imaging/Schnapp.Imaging.csproj">
-    <Platform Project="x64" />
+    <Platform Solution="*|x64" Project="x64" />
   </Project>
   <Project Path="../common/Schnapp.ScreenshotEncode/Schnapp.ScreenshotEncode.csproj">
-    <Platform Project="x64" />
+    <Platform Solution="*|x64" Project="x64" />
   </Project>
   <Project Path="../servers/Schnapp.Data/Schnapp.Data.csproj">
-    <Platform Project="x64" />
+    <Platform Solution="*|x64" Project="x64" />
   </Project>
   <Project Path="../servers/Schnapp.Domain/Schnapp.Domain.csproj">
-    <Platform Project="x64" />
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Schnapp.Client.Cli/Schnapp.Client.Cli.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Schnapp.Client.Core/Schnapp.Client.Core.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Schnapp.Client.Linux/Schnapp.Client.Linux.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Schnapp.Client.Windows/Schnapp.Client.Windows.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Schnapp.Utils/Schnapp.Utils.csproj">
+    <Platform Solution="*|x64" Project="x64" />
   </Project>
 </Solution>

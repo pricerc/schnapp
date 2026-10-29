@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain;
+
+using Medo;
 
 /// <summary>
 /// Reserved identifiers for seeded sentinel rows (Customer/Project/Task NONE).

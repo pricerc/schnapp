@@ -1,12 +1,14 @@
+namespace Schnapp.Utils;
+
 using Medo;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Contracts;
 using Schnapp.Data;
 using Schnapp.Data.Repositories;
 using Schnapp.Screenshots;
-
-namespace Schnapp.Utils;
 
 /// <summary>
 /// Creates (or re-creates) the gallery thumbnail tiers for existing screenshots from their stored originals.

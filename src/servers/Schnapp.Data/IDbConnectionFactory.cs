@@ -1,6 +1,6 @@
-using System.Data;
-
 namespace Schnapp.Data;
+
+using System.Data;
 
 /// <summary>
 /// Abstraction for creating ADO.NET connections (Npgsql or FirebirdClient).

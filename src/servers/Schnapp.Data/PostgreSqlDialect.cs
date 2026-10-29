@@ -1,6 +1,6 @@
-using Npgsql;
-
 namespace Schnapp.Data;
+
+using Npgsql;
 
 /// <summary>PostgreSQL fragments and Npgsql SQLSTATE mapping.</summary>
 public sealed class PostgreSqlDialect : IDatabaseDialect

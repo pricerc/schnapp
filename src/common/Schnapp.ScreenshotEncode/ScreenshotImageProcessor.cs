@@ -1,9 +1,10 @@
+namespace Schnapp.Screenshots;
+
 using Schnapp.Contracts;
+
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
-
-namespace Schnapp.Screenshots;
 
 /// <summary>One encoded thumbnail tier (<paramref name="Size"/> is the tier's longest edge).</summary>
 public readonly record struct ScreenshotThumb(int Size, byte[] Jpeg);

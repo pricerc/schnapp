@@ -1,9 +1,12 @@
+namespace Schnapp.Data.Repositories;
+
 using Dapper;
+
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Domain.Entities;
 
 using Medo;
-namespace Schnapp.Data.Repositories;
 
 /// <summary>
 /// Dapper data access for the <c>api_token</c> table (long-lived bearer credentials).

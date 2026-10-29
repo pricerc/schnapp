@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Schnapp.Utils</RootNamespace>
     <AssemblyName>schnapp-utils</AssemblyName>
-    <Platforms>x64</Platforms>
+    <Platforms>x64;AnyCPU</Platforms>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\common\Schnapp.Imaging\Schnapp.Imaging.csproj" />

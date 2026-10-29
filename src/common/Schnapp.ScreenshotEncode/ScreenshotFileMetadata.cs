@@ -1,12 +1,14 @@
+namespace Schnapp.Screenshots;
+
 using System.Xml.Linq;
+
 using Schnapp.Contracts;
+
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.Metadata.Profiles.Xmp;
 
 using Medo;
-
-namespace Schnapp.Screenshots;
 
 /// <summary>Capture fields written into stored JPEG EXIF (viewers) and XMP (import).</summary>
 public sealed class ScreenshotEmbedContext

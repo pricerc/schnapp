@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Data.Repositories;
+
+using Medo;
 
 /// <summary>
 /// Screenshot plus user/machine labels for blob rewrite (EXIF/XMP backfill).

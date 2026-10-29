@@ -1,7 +1,8 @@
-using System.Data;
-using Npgsql;
-
 namespace Schnapp.Data;
+
+using System.Data;
+
+using Npgsql;
 
 /// <summary>
 /// Default <see cref="IDbConnectionFactory"/> that opens PostgreSQL connections via Npgsql.

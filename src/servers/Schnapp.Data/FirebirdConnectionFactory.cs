@@ -1,7 +1,8 @@
-using System.Data;
-using FirebirdSql.Data.FirebirdClient;
-
 namespace Schnapp.Data;
+
+using System.Data;
+
+using FirebirdSql.Data.FirebirdClient;
 
 /// <summary>Pinned Firebird 5 image and SuperServer defaults.</summary>
 public static class FirebirdDefaults

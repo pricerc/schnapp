@@ -1,9 +1,12 @@
+namespace Schnapp.Data.Repositories;
+
 using Dapper;
+
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Domain.Entities;
 
 using Medo;
-namespace Schnapp.Data.Repositories;
 
 /// <summary>
 /// Dapper access for the <c>screenshot</c> table (insert, user-scoped query, metadata update, delete).

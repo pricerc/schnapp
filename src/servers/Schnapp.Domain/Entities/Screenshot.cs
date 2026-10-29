@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain.Entities;
+
+using Medo;
 
 /// <summary>
 /// Metadata for a captured screen image stored as blobs under <see cref="StorageKey"/>

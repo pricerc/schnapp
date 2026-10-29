@@ -1,6 +1,10 @@
+namespace Schnapp.Utils;
+
 using System.Security.Cryptography;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Contracts;
 using Schnapp.Data;
 using Schnapp.Data.Repositories;
@@ -8,8 +12,6 @@ using Schnapp.Domain;
 using Schnapp.Screenshots;
 
 using Medo;
-
-namespace Schnapp.Utils;
 
 /// <summary>
 /// Rewrites stored screenshot originals as JPEG with EXIF + Schnapp XMP, and regenerates all thumb tiers.

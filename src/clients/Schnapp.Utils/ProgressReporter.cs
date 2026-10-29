@@ -1,6 +1,6 @@
-using System.Diagnostics;
-
 namespace Schnapp.Utils;
+
+using System.Diagnostics;
 
 /// <summary>
 /// Thread-safe progress lines on stderr. Default is a terse line every <c>step</c> items;

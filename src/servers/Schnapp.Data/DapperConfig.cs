@@ -1,6 +1,6 @@
-using Dapper;
-
 namespace Schnapp.Data;
+
+using Dapper;
 
 /// <summary>
 /// One-time Dapper global configuration for this process.

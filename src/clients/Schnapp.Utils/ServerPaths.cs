@@ -1,8 +1,9 @@
+namespace Schnapp.Utils;
+
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Schnapp.Data;
 
-namespace Schnapp.Utils;
+using Schnapp.Data;
 
 /// <summary>Resolves Schnapp install root, blob root, and catalog connection.</summary>
 internal static class ServerPaths

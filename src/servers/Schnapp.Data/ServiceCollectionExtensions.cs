@@ -1,9 +1,10 @@
+namespace Schnapp.Data;
+
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Data.Blobs;
 using Schnapp.Data.Repositories;
-
-namespace Schnapp.Data;
 
 /// <summary>
 /// DI registration helpers for the data layer.

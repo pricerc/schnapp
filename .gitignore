@@ -8,7 +8,9 @@ obj/
 *.suo
 *.userosscache
 *.sln.docstates
-.vs/*
+
+.vs/
+
 .vscode/*
 .idea/
 *.swp

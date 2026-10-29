@@ -1,10 +1,13 @@
+namespace Schnapp.Data.Repositories;
+
 using Dapper;
+
 using Microsoft.Extensions.Logging;
+
 using Schnapp.Domain;
 using Schnapp.Domain.Entities;
 
 using Medo;
-namespace Schnapp.Data.Repositories;
 
 /// <summary>
 /// Dapper data access for the <c>app_user</c> table.

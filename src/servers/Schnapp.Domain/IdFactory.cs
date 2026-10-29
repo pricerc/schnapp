@@ -1,6 +1,6 @@
-using Medo;
-
 namespace Schnapp.Domain;
+
+using Medo;
 
 /// <summary>
 /// Application-side id generation for new entity rows (native <see cref="Uuid7"/>).
