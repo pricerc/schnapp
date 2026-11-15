@@ -1,56 +1,71 @@
-## Build
-bin/
-obj/
+# .NET build output
+[Bb]in/
+[Oo]bj/
 [Bb]uild/
+[Dd]ebug*/
+[Rr]elease*/
 [Ll]og/
 [Ll]ogs/
+artifacts/
+publish/
+TestResults/
+[Tt]est[Rr]esult*/
+BenchmarkDotNet.Artifacts/
+*.binlog
+
+# IDE and editor files
+.vs/
+.idea/
+.vscode/*
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
-
-.vs/
-
-.vscode/*
-.idea/
+*.DotSettings.user
 *.swp
 *~
 
-## Data / local runtime
-/data/*
-!/data/.gitkeep
-**/appsettings.*.local.json
-**/appsettings.Local.json
-
-## Secrets / env
+# Local settings and secrets
 .env
 .env.*
 !.env.example
 secrets.json
+**/appsettings.*.local.json
+**/appsettings.Local.json
+*.pfx
+*.pubxml
+*.publishsettings
 
-## Test / coverage
-TestResults/
+# Local data and runtime files
+/data/*
+!/data/.gitkeep
+src/data/blobs/*
+
+# Test and coverage output
 coverage/
+coverage*.json
+coverage*.xml
+coverage*.info
 *.coverage
 *.coveragexml
 
-## OS
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/
+*.nuget.props
+*.nuget.targets
+
+# OS files
 .DS_Store
 Thumbs.db
 
-## NuGet
-*.nupkg
-**/packages/
-
-
-# User-specific files
+# Project-specific local and generated files
 project.lock.json
 project.fragment.lock.json
-artifacts/
 docs/Archive/*
 docs/phase1_session-ses_0a4b.md
 docs/ses*.json
-src/data/blobs/*
 legacy/
 legacy/api
 legacy/desktop
@@ -58,3 +73,4 @@ legacy/webapp
 *.bak
 *.orig
 sixlabors.lic
+src/clients/.vs/ProjectEvaluation/schnapp.clients.metadata.v10.bin
